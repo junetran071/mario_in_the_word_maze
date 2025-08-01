@@ -1,12 +1,31 @@
 import streamlit as st
 import pandas as pd
-import nltk
 import re
-import emoji
-from unidecode import unidecode
-from nltk.tokenize import sent_tokenize
 import io
 from typing import Dict, List, Optional
+
+# Try to import optional dependencies with error handling
+try:
+    import nltk
+    from nltk.tokenize import sent_tokenize
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+    st.error("🚫 NLTK is not installed. Please install it using: pip install nltk")
+
+try:
+    import emoji
+    EMOJI_AVAILABLE = True
+except ImportError:
+    EMOJI_AVAILABLE = False
+    st.warning("⚠️ Emoji package not available. Emoji removal will be skipped.")
+
+try:
+    from unidecode import unidecode
+    UNIDECODE_AVAILABLE = True
+except ImportError:
+    UNIDECODE_AVAILABLE = False
+    st.warning("⚠️ Unidecode package not available. Unicode normalization will be skipped.")
 
 # Configure Streamlit page
 st.set_page_config(
@@ -116,10 +135,20 @@ st.markdown("""
 @st.cache_resource
 def download_nltk_data():
     """Download required NLTK data"""
+    if not NLTK_AVAILABLE:
+        return False
+    
     try:
+        import nltk
         nltk.download('punkt_tab', quiet=True)
+        return True
     except:
-        nltk.download('punkt', quiet=True)
+        try:
+            nltk.download('punkt', quiet=True)
+            return True
+        except:
+            st.error("Failed to download NLTK data")
+            return False
 
 class TextPreprocessor:
     """Configurable text preprocessing for Instagram captions"""
@@ -155,11 +184,20 @@ class TextPreprocessor:
             return self.config['padding_token']
         
         # Remove emojis
-        if self.config['remove_emojis']:
+        if self.config['remove_emojis'] and EMOJI_AVAILABLE:
             text = emoji.replace_emoji(text, replace='')
+        elif self.config['remove_emojis'] and not EMOJI_AVAILABLE:
+            # Fallback: simple emoji removal using regex
+            emoji_pattern = re.compile("["
+                u"\U0001F600-\U0001F64F"  # emoticons
+                u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                "]+", flags=re.UNICODE)
+            text = emoji_pattern.sub(r'', text)
         
         # Normalize unicode characters
-        if self.config['normalize_unicode']:
+        if self.config['normalize_unicode'] and UNIDECODE_AVAILABLE:
             text = unidecode(text)
         
         # Remove URLs
@@ -193,7 +231,14 @@ class TextPreprocessor:
         if self.config['add_period_if_missing'] and not text[-1] in '.!?':
             text += '.'
         
-        sentences = sent_tokenize(text)
+        if NLTK_AVAILABLE:
+            from nltk.tokenize import sent_tokenize
+            sentences = sent_tokenize(text)
+        else:
+            # Fallback: simple sentence splitting
+            sentences = re.split(r'[.!?]+', text)
+            sentences = [s.strip() for s in sentences if s.strip()]
+        
         return [s.strip() for s in sentences if s.strip()]
 
 def process_dataframe(df: pd.DataFrame, config: Dict, required_columns: Dict) -> pd.DataFrame:
@@ -245,8 +290,32 @@ def process_dataframe(df: pd.DataFrame, config: Dict, required_columns: Dict) ->
 
 def main():
     """Main Streamlit app"""
+    
+    # Check for missing dependencies
+    missing_deps = []
+    if not NLTK_AVAILABLE:
+        missing_deps.append("nltk")
+    if not EMOJI_AVAILABLE:
+        missing_deps.append("emoji")
+    if not UNIDECODE_AVAILABLE:
+        missing_deps.append("unidecode")
+    
+    # Show installation instructions if dependencies are missing
+    if missing_deps:
+        st.error(f"🚫 Missing required packages: {', '.join(missing_deps)}")
+        st.code(f"pip install {' '.join(missing_deps)}")
+        st.markdown("**Or create a requirements.txt file with:**")
+        st.code("""streamlit
+pandas
+nltk
+emoji
+unidecode""")
+        st.stop()
+    
     # Download NLTK data
-    download_nltk_data()
+    if not download_nltk_data():
+        st.error("Failed to initialize NLTK. Please check your internet connection.")
+        st.stop()
     
     # Princess Peach welcome section
     st.markdown("""
