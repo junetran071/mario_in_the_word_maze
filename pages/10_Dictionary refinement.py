@@ -335,3 +335,13 @@ class DictionaryClassifier:
         plt.show()
 
 print("🌸 Princess Dictionary Classification Tool Ready! 🌸")
+
+
+# Quick test
+classifier = DictionaryClassifier()
+classifier.load_data()  # Load sample data
+classifier.set_dictionary(['spring', 'trunk', 'show', 'sale'])
+classifier.classify()
+classifier.analyze_keywords()
+classifier.show_errors()
+classifier.plot_metrics()
