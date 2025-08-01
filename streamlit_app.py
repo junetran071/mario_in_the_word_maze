@@ -36,33 +36,156 @@ st.set_page_config(
 # Custom CSS for Mario theme
 st.markdown("""
 <style>
+    /* Mario-themed background and main styling */
+    .main .block-container {
+        background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 50%, #87CEEB 100%);
+        padding: 2rem 1rem;
+        border-radius: 15px;
+        border: 4px solid #8B4513;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+    
+    /* Main app background */
+    .stApp {
+        background: linear-gradient(45deg, #00A652 0%, #32CD32 25%, #00A652 50%, #228B22 75%, #00A652 100%);
+        background-size: 400% 400%;
+        animation: gradientShift 8s ease infinite;
+    }
+    
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    /* Sidebar styling */
+    .sidebar .sidebar-content {
+        background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%);
+        border: 3px solid #8B4513;
+        border-radius: 10px;
+    }
+    
+    /* Header styling */
     .main-header {
         text-align: center;
         color: #E60012;
         font-size: 3rem;
         font-weight: bold;
         margin-bottom: 1rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        background: linear-gradient(45deg, #FFD700, #FFA500);
+        padding: 20px;
+        border-radius: 15px;
+        border: 4px solid #8B4513;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
+    
     .sub-header {
         text-align: center;
         color: #0066CC;
         font-size: 1.2rem;
         margin-bottom: 2rem;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 10px;
+        border: 2px solid #0066CC;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
+    
+    /* Success and info boxes */
     .success-box {
-        background-color: #00A652;
+        background: linear-gradient(45deg, #00A652, #32CD32);
         color: white;
-        padding: 10px;
-        border-radius: 5px;
+        padding: 15px;
+        border-radius: 10px;
         margin: 10px 0;
+        border: 3px solid #228B22;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     }
+    
     .info-box {
-        background-color: #FFD700;
-        color: black;
-        padding: 10px;
-        border-radius: 5px;
+        background: linear-gradient(45deg, #FFD700, #FFA500);
+        color: #8B4513;
+        padding: 15px;
+        border-radius: 10px;
         margin: 10px 0;
+        border: 3px solid #8B4513;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        font-weight: bold;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background: linear-gradient(45deg, #E60012, #FF4500);
+        color: white;
+        border: 3px solid #8B0000;
+        border-radius: 10px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(45deg, #FF4500, #E60012);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+    }
+    
+    /* Dataframe styling */
+    .dataframe {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        border: 2px solid #8B4513;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Metric styling */
+    .metric-container {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        border: 2px solid #8B4513;
+        padding: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* File uploader styling */
+    .uploadedFile {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        border: 2px solid #8B4513;
+    }
+    
+    /* Sidebar elements */
+    .stSelectbox > div > div {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 5px;
+        border: 2px solid #8B4513;
+    }
+    
+    .stTextInput > div > div > input {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 5px;
+        border: 2px solid #8B4513;
+    }
+    
+    .stTextArea > div > div > textarea {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 5px;
+        border: 2px solid #8B4513;
+    }
+    
+    /* Add Mario coin animation */
+    @keyframes coinFlip {
+        0% { transform: rotateY(0deg); }
+        100% { transform: rotateY(360deg); }
+    }
+    
+    .coin {
+        display: inline-block;
+        animation: coinFlip 2s linear infinite;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -285,8 +408,13 @@ def create_mario_visualization(df, dictionaries):
 
 def main():
     # Header
-    st.markdown('<h1 class="main-header">🍄 MARIO\'S TEXT ANALYSIS CASTLE 🍄</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Welcome to the most super text analysis tool in the Mushroom Kingdom!</p>', unsafe_allow_html=True)
+    st.markdown('''
+    <h1 class="main-header">
+        🍄 MARIO'S TEXT ANALYSIS CASTLE 🍄
+        <br><span class="coin">🪙</span> <span class="coin">⭐</span> <span class="coin">🪙</span>
+    </h1>
+    ''', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">🎮 Welcome to the most super text analysis tool in the Mushroom Kingdom! 🎮</p>', unsafe_allow_html=True)
     
     # Sidebar for configuration
     st.sidebar.header("🎮 Configuration Panel")
