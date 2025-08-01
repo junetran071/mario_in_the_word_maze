@@ -1,12 +1,15 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
-from typing import List, Dict, Tuple
-import re
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from scipy.stats import pearsonr
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
+from collections import Counter
+import re
+from matplotlib.patches import Rectangle
+import matplotlib.patches as mpatches
+import io
 
 class DictionaryClassifier:
     """
