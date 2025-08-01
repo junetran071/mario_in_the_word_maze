@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 from collections import Counter
@@ -8,7 +10,10 @@ import re
 from matplotlib.patches import Rectangle
 import matplotlib.patches as mpatches
 import io
-import base64
+
+# Suppress matplotlib warnings
+import warnings
+warnings.filterwarnings('ignore')
 
 # Mario Theme Colors
 MARIO_COLORS = {
@@ -25,12 +30,11 @@ MARIO_COLORS = {
     'black': '#000000'          # Outline black
 }
 
-# Set page config
+# Set page config with simpler options
 st.set_page_config(
-    page_title="🍄 Mario's Text Analysis Castle",
+    page_title="Mario Text Analysis",
     page_icon="🍄",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Custom CSS for Mario theme
@@ -522,7 +526,7 @@ def main():
     )
     
     if dict_option == "Reset to Default":
-        if st.sidebar.button("🔄 Reset Dictionaries"):
+        if st.sidebar.button("🔄 Reset Dictionaries", key="reset_dicts"):
             st.session_state.dictionaries = default_dictionaries.copy()
             st.sidebar.success("✅ Dictionaries reset to default!")
     
@@ -534,7 +538,7 @@ def main():
             help="Enter each term on a new line"
         )
         
-        if st.sidebar.button("➕ Add Dictionary"):
+        if st.button("➕ Add Dictionary", key="add_new_dict"):
             if new_dict_name and new_dict_terms:
                 terms = set(term.strip() for term in new_dict_terms.split('\n') if term.strip())
                 st.session_state.dictionaries[new_dict_name] = terms
@@ -559,16 +563,17 @@ def main():
             
             col1, col2 = st.sidebar.columns(2)
             with col1:
-                if st.button("💾 Save Changes"):
+                if st.button("💾 Save Changes", key=f"save_{selected_dict}"):
                     terms = set(term.strip() for term in edited_terms.split('\n') if term.strip())
                     st.session_state.dictionaries[selected_dict] = terms
                     st.sidebar.success("✅ Dictionary updated!")
             
             with col2:
-                if st.button("🗑️ Delete Dict"):
-                    del st.session_state.dictionaries[selected_dict]
-                    st.sidebar.success("✅ Dictionary deleted!")
-                    st.rerun()
+                if st.button("🗑️ Delete Dict", key=f"delete_{selected_dict}"):
+                    if selected_dict in st.session_state.dictionaries:
+                        del st.session_state.dictionaries[selected_dict]
+                        st.sidebar.success("✅ Dictionary deleted!")
+                        st.rerun()
     
     # Main content area
     if uploaded_file is not None:
