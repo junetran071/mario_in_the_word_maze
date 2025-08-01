@@ -382,7 +382,7 @@ def main():
                 if st.button("🗑️ Delete Dict"):
                     del st.session_state.dictionaries[selected_dict]
                     st.sidebar.success("✅ Dictionary deleted!")
-                    st.experimental_rerun()
+                    st.rerun()
     
     # Main content area
     if uploaded_file is not None:
