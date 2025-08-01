@@ -432,6 +432,35 @@ def main():
             'members only', 'vip', 'special access', 'invitation only',
             'premium', 'privileged', 'limited access', 'select customers',
             'insider', 'private sale', 'early access'
+        },
+        'personal_milestone': {
+            'honor', 'success', 'promotion', 'achievement', 'recognition',
+            'accomplishment', 'milestone', 'proud', 'celebration', 'victory',
+            'winning', 'graduate', 'graduation', 'diploma', 'certificate',
+            'award', 'prize', 'champion', 'first place'
+        },
+        'gratitude_reflection': {
+            'graceful', 'honored', 'thanks', 'gratitude', 'blessing',
+            'grateful', 'appreciate', 'appreciation', 'thankful', 'blessed',
+            'fortunate', 'lucky', 'privilege', 'humbled', 'touched',
+            'moved', 'heartfelt', 'sincere'
+        },
+        'local_business': {
+            'shop local', 'neighborhood', 'community', 'local store', 'locally owned',
+            'hometown', 'family business', 'local economy', 'support local',
+            'community business', 'neighborhood shop', 'local market',
+            'regional', 'nearby', 'around the corner'
+        },
+        'social_proof': {
+            'satisfied customer', 'testimonial', 'proven results', 'client says',
+            'recommendation', 'review', 'rating', 'feedback', 'endorsement',
+            'word of mouth', 'referral', 'trusted by', 'recommended by'
+        },
+        'discount_pricing': {
+            'markdown', 'affordable', 'value', 'budget', 'bargain',
+            'discount', 'sale', 'reduced price', 'special price', 'deal',
+            'offer', 'promotion', 'savings', 'cheap', 'low cost',
+            'price cut'
         }
     }
     
@@ -652,8 +681,23 @@ def main():
         ### 🍄 Default Dictionaries:
         """)
         
-        for dict_name, terms in default_dictionaries.items():
-            st.write(f"**{dict_name.replace('_', ' ').title()}**: {', '.join(sorted(list(terms)[:10]))}{'...' if len(terms) > 10 else ''}")
+        # Display dictionaries in a more organized way
+        col1, col2 = st.columns(2)
+        
+        dict_items = list(default_dictionaries.items())
+        mid_point = len(dict_items) // 2
+        
+        with col1:
+            for dict_name, terms in dict_items[:mid_point]:
+                st.write(f"**{dict_name.replace('_', ' ').title()}** ({len(terms)} terms)")
+                st.write(f"Sample: {', '.join(sorted(list(terms))[:5])}...")
+                st.write("")
+        
+        with col2:
+            for dict_name, terms in dict_items[mid_point:]:
+                st.write(f"**{dict_name.replace('_', ' ').title()}** ({len(terms)} terms)")
+                st.write(f"Sample: {', '.join(sorted(list(terms))[:5])}...")
+                st.write("")
 
 if __name__ == "__main__":
     main()
