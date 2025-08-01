@@ -444,10 +444,39 @@ def main():
     )
     
     # Text column selection
-    text_column = st.sidebar.text_input(
-        "📝 Text Column Name", 
-        value="Statement",
-        help="Name of the column containing text to analyze"
+    st.sidebar.subheader("📝 Select Text Column")
+    st.sidebar.write("Choose the column containing text to analyze:")
+    
+    # Default column options when no file is uploaded
+    default_columns = ["ID", "Turn", "Speaker", "Context", "Statement", "Tactic_human", "Tactic_human_reasoning"]
+    
+    # If file is uploaded, use actual columns, otherwise use defaults
+    if uploaded_file is not None:
+        try:
+            # Read just the header to get column names
+            temp_df = pd.read_csv(uploaded_file, nrows=0)
+            available_columns = list(temp_df.columns)
+            uploaded_file.seek(0)  # Reset file pointer
+        except:
+            available_columns = default_columns
+    else:
+        available_columns = default_columns
+    
+    # Find default selection
+    if "Statement" in available_columns:
+        default_index = available_columns.index("Statement")
+    elif "Context" in available_columns:
+        default_index = available_columns.index("Context")
+    elif len(available_columns) > 0:
+        default_index = 0
+    else:
+        default_index = 0
+    
+    text_column = st.sidebar.selectbox(
+        "Select column:",
+        options=available_columns,
+        index=default_index,
+        help="Choose the column that contains the text you want to analyze"
     )
     
     # Dictionary configuration
