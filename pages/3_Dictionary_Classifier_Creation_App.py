@@ -78,7 +78,11 @@ st.write("Upload your CSV file and classify text using keyword dictionaries")
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+    try:
+        df = pd.read_csv(uploaded_file, encoding='utf-8', errors='replace')
+    except Exception:
+        df = pd.read_csv(uploaded_file, encoding='ISO-8859-1')
+
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
