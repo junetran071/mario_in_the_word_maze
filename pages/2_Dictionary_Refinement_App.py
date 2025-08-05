@@ -589,13 +589,25 @@ def main():
         with col2:
             # Binary predictions pie chart
             binary_counts = st.session_state.results['binary_prediction'].value_counts()
-            fig = px.pie(
-                values=binary_counts.values,
-                names=['Negative (0)', 'Positive (1)'],
-                title='🏁 Binary Classification Results',
-                color_discrete_sequence=['#74B9FF', '#FF6B6B']
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            
+            # Check if we have data for the pie chart
+            if len(binary_counts) > 0 and binary_counts.sum() > 0:
+                fig = px.pie(
+                    values=binary_counts.values,
+                    names=['Negative (0)', 'Positive (1)'],
+                    title='🏁 Binary Classification Results',
+                    color_discrete_sequence=['#74B9FF', '#FF6B6B']
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                # Show alternative when no data
+                st.markdown("""
+                <div class="mushroom-card">
+                    <h4 style="color: white; text-align: center;">🏁 Binary Classification Results</h4>
+                    <p style="color: white; text-align: center;">🚫 Mamma mia! No data to display yet.<br>
+                    Run classification first!</p>
+                </div>
+                """, unsafe_allow_html=True)
         
         # Confusion matrix
         if st.session_state.metrics:
@@ -606,31 +618,40 @@ def main():
                 [st.session_state.metrics['fn'], st.session_state.metrics['tp']]
             ]
             
-            fig = px.imshow(
-                cm_values,
-                text_auto=True,
-                color_continuous_scale='Reds',
-                title='Confusion Matrix'
-            )
-            fig.update_xaxes(ticktext=['Predicted 0', 'Predicted 1'], tickvals=[0, 1])
-            fig.update_yaxes(ticktext=['Actual 0', 'Actual 1'], tickvals=[0, 1])
-            st.plotly_chart(fig, use_container_width=True)
+            # Check if confusion matrix has valid data
+            if any(any(row) for row in cm_values):
+                fig = px.imshow(
+                    cm_values,
+                    text_auto=True,
+                    color_continuous_scale='Reds',
+                    title='Confusion Matrix'
+                )
+                fig.update_xaxes(ticktext=['Predicted 0', 'Predicted 1'], tickvals=[0, 1])
+                fig.update_yaxes(ticktext=['Actual 0', 'Actual 1'], tickvals=[0, 1])
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("🍄 No confusion matrix data available - need ground truth column for analysis!")
         
         # Keyword analysis
-        if st.session_state.keyword_analysis is not None:
+        if st.session_state.keyword_analysis is not None and len(st.session_state.keyword_analysis) > 0:
             st.markdown("### 🔍 Toad's Mushroom Keyword Analysis")
             
-            # Keyword performance chart
-            fig = px.bar(
-                st.session_state.keyword_analysis.nlargest(10, 'f1_score'),
-                x='f1_score',
-                y='keyword',
-                orientation='h',
-                title='🍄 Top Keywords by F1 Score',
-                color='f1_score',
-                color_continuous_scale='Reds'
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            # Check if we have valid keyword data
+            top_keywords = st.session_state.keyword_analysis.nlargest(10, 'f1_score')
+            if len(top_keywords) > 0 and top_keywords['f1_score'].sum() > 0:
+                # Keyword performance chart
+                fig = px.bar(
+                    top_keywords,
+                    x='f1_score',
+                    y='keyword',
+                    orientation='h',
+                    title='🍄 Top Keywords by F1 Score',
+                    color='f1_score',
+                    color_continuous_scale='Reds'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("🍄 No keyword performance data available - keywords may not have matched any text!")
             
             # Top keywords by metrics
             col1, col2 = st.columns(2)
@@ -638,14 +659,26 @@ def main():
             with col1:
                 st.markdown("#### ⚡ Top by Recall (Speed Boost!)")
                 top_recall = st.session_state.keyword_analysis.nlargest(5, 'recall')
-                for _, row in top_recall.iterrows():
-                    st.write(f"🍄 **{row['keyword']}** - Recall: {row['recall']:.1%}, Precision: {row['precision']:.1%}, F1: {row['f1_score']:.1%}")
+                if len(top_recall) > 0:
+                    for _, row in top_recall.iterrows():
+                        if row['recall'] > 0:  # Only show keywords with actual performance
+                            st.write(f"🍄 **{row['keyword']}** - Recall: {row['recall']:.1%}, Precision: {row['precision']:.1%}, F1: {row['f1_score']:.1%}")
+                    if top_recall['recall'].sum() == 0:
+                        st.write("🚫 No keywords found positive examples yet!")
+                else:
+                    st.write("🍄 Run classification first to see keyword performance!")
             
             with col2:
                 st.markdown("#### 🔴 Top by Precision (Mushroom Accuracy!)")
                 top_precision = st.session_state.keyword_analysis.nlargest(5, 'precision')
-                for _, row in top_precision.iterrows():
-                    st.write(f"🍄 **{row['keyword']}** - Precision: {row['precision']:.1%}, Recall: {row['recall']:.1%}, F1: {row['f1_score']:.1%}")
+                if len(top_precision) > 0:
+                    for _, row in top_precision.iterrows():
+                        if row['precision'] > 0:  # Only show keywords with actual performance
+                            st.write(f"🍄 **{row['keyword']}** - Precision: {row['precision']:.1%}, Recall: {row['recall']:.1%}, F1: {row['f1_score']:.1%}")
+                    if top_precision['precision'].sum() == 0:
+                        st.write("🚫 No keywords matched any text yet!")
+                else:
+                    st.write("🍄 Run classification first to see keyword performance!")
         
         # Error analysis
         st.markdown("### 🚫 Toad's Error Analysis")
