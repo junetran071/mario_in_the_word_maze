@@ -5,20 +5,24 @@ from functools import reduce
 
 # Page configuration
 st.set_page_config(
-    page_title="Doraemon's CSV Join Tool",
+    page_title="Mario's CSV Join Tool",
     page_icon="🐱",
     layout="wide"
 )
 
-# Doraemon theme CSS
+# Mario theme CSS
 st.markdown("""
 <style>
-    /* Main background with Doraemon light blue */
+    /* Main background with Mario light blue */
+
+    body {
+        color: black;
+    }
     .stApp {
         background: linear-gradient(135deg, #B3E5FC 0%, #E3F2FD 50%, #B3E5FC 100%);
     }
     
-    /* Header styling with Doraemon colors */
+    /* Header styling with Mario colors */
     .main-header {
         background: linear-gradient(90deg, #1976D2, #2196F3, #42A5F5);
         -webkit-background-clip: text;
@@ -210,11 +214,11 @@ def multi_join(base_df: pd.DataFrame, dataframes: list, join_keys: list, join_ty
     return result
 
 def main():
-    # Welcome header with Doraemon theme
-    st.markdown("<h1 class='main-header'>🐱 Doraemon's Magical CSV Join Tool 🔧</h1>", unsafe_allow_html=True)
+    # Welcome header with Mario theme
+    st.markdown("<h1 class='main-header'>🍄 Mario's Magical CSV Join Tool 🔧</h1>", unsafe_allow_html=True)
     
     # Instructions section with proper markdown
-    st.markdown("### Welcome to Doraemon's CSV Join Tool!")
+    st.markdown("### Welcome to Mario's CSV Join Tool!")
     
     # What This Tool Can Do section
     st.markdown("#### 🎯 What This Tool Can Do:")
@@ -226,7 +230,7 @@ def main():
     """)
     
     # Tips section
-    st.markdown("#### 💡 Doraemon's Tips:")
+    st.markdown("#### 💡 Mario's Tips:")
     st.markdown("""
     - Make sure your CSV files have at least one common column for joining
     - Check the first few rows of your data before joining
@@ -388,7 +392,7 @@ def main():
             st.download_button(
                 label="📥 Download Your Magical Results!",
                 data=csv_data,
-                file_name="doraemon_joined_data.csv",
+                file_name="Mario_joined_data.csv",
                 mime="text/csv"
             )
             
