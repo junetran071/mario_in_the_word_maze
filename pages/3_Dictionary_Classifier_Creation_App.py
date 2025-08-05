@@ -33,8 +33,7 @@ st.markdown("""
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-header">🍄 Mario Text Classifier 🍄</h1>', unsafe_allow_html=True)
-
+st.markdown('<h1 class="main-header">🎄 Mario Text Classifier 🎄</h1>', unsafe_allow_html=True)
 
 def create_classification_dictionary():
     return {
@@ -46,7 +45,6 @@ def create_classification_dictionary():
         "social_proof": ["customers love", "top rated", "testimonials", "as seen on", "popular choice"],
         "discount_pricing": ["sale", "discount", "% off", "bogo", "markdown", "deal"]
     }
-
 
 def classify_text(text, dictionary):
     if not text or pd.isna(text):
@@ -65,7 +63,6 @@ def classify_text(text, dictionary):
 
     return results
 
-
 def classify_dataframe(df, text_column, dictionary):
     classifications = []
     for _, row in df.iterrows():
@@ -73,7 +70,6 @@ def classify_dataframe(df, text_column, dictionary):
         classification = classify_text(text, dictionary)
         classifications.append(classification)
     return classifications
-
 
 st.write("Upload your CSV file and classify text using keyword dictionaries")
 
@@ -102,7 +98,7 @@ if uploaded_file is not None:
             df['classifications'] = classifications
 
             for category in classification_dict.keys():
-                df[f'{category}_match'] = df['classifications'].apply(
+                df[category] = df['classifications'].apply(
                     lambda x: x.get(category, {}).get('count', 0)
                 )
 
@@ -128,7 +124,7 @@ if uploaded_file is not None:
                     st.write(f"{category.replace('_', ' ').title()}: {count}")
 
             st.subheader("Detailed Results")
-            display_df = df[[text_column] + [f'{cat}_match' for cat in classification_dict.keys()]].copy()
+            display_df = df[[text_column] + list(classification_dict.keys())].copy()
 
             def format_classification(row):
                 details = []
@@ -150,5 +146,3 @@ if uploaded_file is not None:
             )
 else:
     st.info("Upload a CSV file to begin classification.")
-
-
