@@ -21,9 +21,10 @@ st.markdown("""
     
     /* Header styling with Mario colors */
     .main-header {
-        background: linear-gradient(90deg, #1976D2, #2196F3, #c98653);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        # background: linear-gradient(90deg, #1976D2, #2196F3, #c98653);
+        # -webkit-background-clip: text;
+        # -webkit-text-fill-color: transparent;
+        color: black;
         text-align: center;
         font-size: 2.5rem;
         font-weight: bold;
