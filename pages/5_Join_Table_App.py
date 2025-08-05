@@ -16,7 +16,7 @@ st.markdown("""
     /* Main background with Mario light blue */
 
     .stApp {
-        background: linear-gradient(135deg, #B3E5FC 0%, #213d85 50%, #B3E5FC 100%);
+        background: linear-gradient(135deg, #B3E5FC 0%, #35529c 50%, #B3E5FC 100%);
     }
     
     /* Header styling with Mario colors */
