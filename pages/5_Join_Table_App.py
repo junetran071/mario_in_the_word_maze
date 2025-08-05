@@ -217,7 +217,7 @@ def main():
     st.markdown("<h1>🍄 <span class='main-header'>Mario's Magical CSV Join Tool</span> 🔧</h1>", unsafe_allow_html=True)
     
     # Instructions section with proper markdown
-    st.markdown("### Welcome to Mario's CSV Join Tool!")
+    st.markdown("### Welcome to Mario's CSV Join Tool!𓍊𓋼𓍊𓋼𓍊 𓆏 𓍊𓋼𓍊𓋼𓍊")
     
     # What This Tool Can Do section
     st.markdown("#### 🥦 What This Tool Can Do:")
