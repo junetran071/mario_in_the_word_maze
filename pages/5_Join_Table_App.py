@@ -215,7 +215,7 @@ def multi_join(base_df: pd.DataFrame, dataframes: list, join_keys: list, join_ty
 
 def main():
     # Welcome header with Mario theme
-    st.markdown("<h1>🍄</h1> <h1 class='main-header'> Mario's Magical CSV Join Tool 🔧</h1>", unsafe_allow_html=True)
+    st.markdown("<h1>🍄 <span class='main-header'>Mario's Magical CSV Join Tool</span> 🔧</h1>", unsafe_allow_html=True)
     
     # Instructions section with proper markdown
     st.markdown("### Welcome to Mario's CSV Join Tool!")
