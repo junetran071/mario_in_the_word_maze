@@ -56,9 +56,15 @@ st.set_page_config(page_title="Super Mario Classifier Metrics", layout="centered
 st.markdown(mario_css, unsafe_allow_html=True)
 st.markdown(coin_sound, unsafe_allow_html=True)
 
+# 🎯 Predefined Classifiers
+classifiers = [
+    "urgency_marketing", "exclusive_marketing", "personal_milestone",
+    "gratitude_reflection", "local_business", "social_proof", "discount_pricing"
+]
+
 # Title
 st.title("🍄 Super Mario Classifier Metrics")
-st.write("🏰 Help Mario analyze your Instagram posts using classifiers and unlock your data’s hidden power-ups!")
+st.write("🏰 Help Mario analyze your Instagram posts using these fixed classifier categories!")
 
 # Step 1: Upload CSV
 st.header("🧱 1. Upload Your Data")
@@ -76,24 +82,19 @@ if uploaded_file:
     st.header("🍄 2. Choose Text Column")
     text_column = st.selectbox("📝 Select the column that contains the post text", df.columns.tolist())
 
-    # Step 3: Define classifier columns
-    st.header("⭐ 3. Choose Your Classifiers")
-    default_guess = ", ".join([col for col in df.columns if "prediction" in col or "has_" in col])
-    classifiers_input = st.text_area(
-        "🎯 Enter classifier column names (comma-separated):",
-        default_guess
-    )
-    classifiers = [c.strip() for c in classifiers_input.split(",") if c.strip()]
-
-    # Step 4: Process
-    st.header("🚀 4. Generate Metrics")
+    # Step 3: Process
+    st.header("🚀 3. Generate Metrics")
 
     if st.button("🔊 Generate Statement-Level Metrics"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
 
         metrics_df = df.copy()
+        found_classifiers = []
+        missing_classifiers = []
+
         for classifier in classifiers:
             if classifier in df.columns:
+                found_classifiers.append(classifier)
                 metrics_df[f"{classifier}_word_count"] = df.apply(
                     lambda row: len(str(row[text_column]).split()) if row[classifier] == 1 else 0,
                     axis=1
@@ -102,8 +103,17 @@ if uploaded_file:
                     lambda row: (len(str(row[text_column]).split()) if row[classifier] == 1 else 0) / max(len(str(row[text_column]).split()), 1),
                     axis=1
                 )
-        st.subheader("📊 Final Score: Statement Metrics")
-        st.dataframe(metrics_df)
+            else:
+                missing_classifiers.append(classifier)
+
+        if missing_classifiers:
+            st.warning(f"🚫 These classifier columns were not found: {', '.join(missing_classifiers)}")
+
+        if found_classifiers:
+            st.subheader("📊 Final Score: Statement Metrics")
+            st.dataframe(metrics_df)
+        else:
+            st.error("No valid classifier columns found in your dataset.")
 
     if st.button("👑 Boss Level: Aggregate by ID"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
@@ -112,16 +122,11 @@ if uploaded_file:
             st.warning("⚠️ No 'ID' column found for aggregation.")
         else:
             valid_classifiers = [c for c in classifiers if c in df.columns]
-            invalid_classifiers = [c for c in classifiers if c not in df.columns]
-
-            if invalid_classifiers:
-                st.warning(f"🚫 These classifier columns were not found: {', '.join(invalid_classifiers)}")
-
             if valid_classifiers:
                 agg_df = df.groupby("ID")[valid_classifiers].sum().reset_index()
                 st.subheader("🏁 Aggregated Metrics by ID")
                 st.dataframe(agg_df)
             else:
-                st.warning("⚠️ None of the selected classifier columns exist in the data.")
+                st.warning("⚠️ None of the predefined classifier columns exist in your data.")
 else:
     st.info("🧭 Upload your CSV to begin the adventure!")
