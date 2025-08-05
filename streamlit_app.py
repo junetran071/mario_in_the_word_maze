@@ -1,708 +1,472 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-import seaborn as sns
-from collections import Counter
 import re
-from matplotlib.patches import Rectangle
-import matplotlib.patches as mpatches
 import io
+from typing import Dict, List, Optional
 
-# Suppress matplotlib warnings
-import warnings
-warnings.filterwarnings('ignore')
+# Try to import optional dependencies with error handling
+try:
+    import nltk
+    from nltk.tokenize import sent_tokenize
+    NLTK_AVAILABLE = True
+except ImportError:
+    NLTK_AVAILABLE = False
+    st.error("🚫 NLTK is not installed. Please install it using: pip install nltk")
 
-# Mario Theme Colors
-MARIO_COLORS = {
-    'red': '#E60012',           # Mario's hat red
-    'blue': '#0066CC',          # Mario's overalls blue
-    'yellow': '#FFD700',        # Coins/stars yellow
-    'green': '#00A652',         # Luigi green
-    'brown': '#8B4513',         # Blocks brown
-    'orange': '#FF8C00',        # Fire flower orange
-    'purple': '#8A2BE2',        # Poison mushroom purple
-    'light_blue': '#87CEEB',    # Sky blue
-    'dark_red': '#8B0000',      # Dark red
-    'white': '#FFFFFF',         # Cloud white
-    'black': '#000000'          # Outline black
-}
+try:
+    import emoji
+    EMOJI_AVAILABLE = True
+except ImportError:
+    EMOJI_AVAILABLE = False
+    st.warning("⚠️ Emoji package not available. Emoji removal will be skipped.")
 
-# Set page config with simpler options
+try:
+    from unidecode import unidecode
+    UNIDECODE_AVAILABLE = True
+except ImportError:
+    UNIDECODE_AVAILABLE = False
+    st.warning("⚠️ Unidecode package not available. Unicode normalization will be skipped.")
+
+# Configure Streamlit page
 st.set_page_config(
-    page_title="Mario Text Analysis",
-    page_icon="🍄",
+    page_title="Princess Peach's Instagram Preprocessor",
+    page_icon="👑",
     layout="wide"
 )
 
-# Custom CSS for Mario theme
+# Princess Peach theme CSS
 st.markdown("""
 <style>
-    /* Mario-themed background and main styling */
-    .main .block-container {
-        background: linear-gradient(135deg, #87CEEB 0%, #B0E0E6 50%, #87CEEB 100%);
-        padding: 2rem 1rem;
-        border-radius: 15px;
-        border: 4px solid #8B4513;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-    }
-    
-    /* Main app background */
+    /* Main background gradient */
     .stApp {
-        background: linear-gradient(45deg, #00A652 0%, #32CD32 25%, #00A652 50%, #228B22 75%, #00A652 100%);
-        background-size: 400% 400%;
-        animation: gradientShift 8s ease infinite;
-    }
-    
-    @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    /* Sidebar styling */
-    .sidebar .sidebar-content {
-        background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%);
-        border: 3px solid #8B4513;
-        border-radius: 10px;
+        background: linear-gradient(135deg, #FFE4E6 0%, #FDF2F8 25%, #FCEDF0 50%, #F9E7EC 75%, #FFE4E8 100%);
     }
     
     /* Header styling */
     .main-header {
+        background: linear-gradient(90deg, #EC4899, #F472B6, #FB7185);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         text-align: center;
-        color: #E60012;
         font-size: 3rem;
         font-weight: bold;
         margin-bottom: 1rem;
-        text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
-        background: linear-gradient(45deg, #FFD700, #FFA500);
-        padding: 20px;
-        border-radius: 15px;
-        border: 4px solid #8B4513;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        text-shadow: 2px 2px 4px rgba(236, 72, 153, 0.3);
     }
     
-    .sub-header {
-        text-align: center;
-        color: #0066CC;
-        font-size: 1.2rem;
-        margin-bottom: 2rem;
-        background: rgba(255, 255, 255, 0.8);
-        padding: 10px;
-        border-radius: 10px;
-        border: 2px solid #0066CC;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-    }
-    
-    /* Success and info boxes */
-    .success-box {
-        background: linear-gradient(45deg, #00A652, #32CD32);
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin: 10px 0;
-        border: 3px solid #228B22;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        font-weight: bold;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    }
-    
-    .info-box {
-        background: linear-gradient(45deg, #FFD700, #FFA500);
-        color: #8B4513;
-        padding: 15px;
-        border-radius: 10px;
-        margin: 10px 0;
-        border: 3px solid #8B4513;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        font-weight: bold;
+    /* Sidebar styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #FDF2F8 0%, #FCE7F3 100%);
+        border-right: 2px solid #F9A8D4;
     }
     
     /* Button styling */
     .stButton > button {
-        background: linear-gradient(45deg, #E60012, #FF4500);
+        background: linear-gradient(45deg, #EC4899, #F472B6);
         color: white;
-        border: 3px solid #8B0000;
-        border-radius: 10px;
+        border: none;
+        border-radius: 25px;
+        padding: 0.5rem 2rem;
         font-weight: bold;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
         transition: all 0.3s ease;
     }
     
     .stButton > button:hover {
-        background: linear-gradient(45deg, #FF4500, #E60012);
         transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.4);
-    }
-    
-    /* Dataframe styling */
-    .dataframe {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
-        border: 2px solid #8B4513;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
     }
     
     /* Metric styling */
-    .metric-container {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
-        border: 2px solid #8B4513;
-        padding: 10px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    .css-1xarl3l {
+        background: linear-gradient(135deg, #FDF2F8, #FCE7F3);
+        border-radius: 15px;
+        border: 2px solid #F9A8D4;
+        padding: 1rem;
     }
     
     /* File uploader styling */
-    .uploadedFile {
-        background: rgba(255, 255, 255, 0.9);
+    .css-1cpxqw2 {
+        border: 2px dashed #EC4899;
+        border-radius: 15px;
+        background: linear-gradient(135deg, #FFFBFC, #FDF2F8);
+    }
+    
+    /* Success message styling */
+    .stSuccess {
+        background: linear-gradient(90deg, #10B981, #34D399);
         border-radius: 10px;
-        border: 2px solid #8B4513;
     }
     
-    /* Sidebar elements */
-    .stSelectbox > div > div {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 5px;
-        border: 2px solid #8B4513;
+    /* Crown decoration */
+    .crown-decoration {
+        text-align: center;
+        font-size: 2rem;
+        margin: 1rem 0;
     }
     
-    .stTextInput > div > div > input {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 5px;
-        border: 2px solid #8B4513;
+    /* Princess welcome message */
+    .princess-welcome {
+        background: linear-gradient(135deg, #FDF2F8, #FCE7F3, #FFEEF0);
+        border: 2px solid #F9A8D4;
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin: 1rem 0;
+        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.2);
     }
     
-    .stTextArea > div > div > textarea {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 5px;
-        border: 2px solid #8B4513;
+    .princess-welcome h2 {
+        color: #BE185D;
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
     }
     
-    /* Add Mario coin animation */
-    @keyframes coinFlip {
-        0% { transform: rotateY(0deg); }
-        100% { transform: rotateY(360deg); }
-    }
-    
-    .coin {
-        display: inline-block;
-        animation: coinFlip 2s linear infinite;
+    .princess-welcome p {
+        color: #831843;
+        font-size: 1.2rem;
+        font-style: italic;
     }
 </style>
 """, unsafe_allow_html=True)
 
-def mario_style_plot():
-    """Set Mario-themed plot style"""
-    plt.style.use('default')
-    plt.rcParams.update({
-        'font.family': 'serif',
-        'font.weight': 'bold',
-        'axes.facecolor': MARIO_COLORS['light_blue'],
-        'figure.facecolor': MARIO_COLORS['white'],
-        'axes.edgecolor': MARIO_COLORS['black'],
-        'axes.linewidth': 3,
-        'grid.color': MARIO_COLORS['white'],
-        'grid.alpha': 0.7,
-        'font.size': 10
-    })
+# Download NLTK data on first run
+@st.cache_resource
+def download_nltk_data():
+    """Download required NLTK data"""
+    if not NLTK_AVAILABLE:
+        return False
+    
+    try:
+        import nltk
+        nltk.download('punkt_tab', quiet=True)
+        return True
+    except:
+        try:
+            nltk.download('punkt', quiet=True)
+            return True
+        except:
+            st.error("Failed to download NLTK data")
+            return False
 
-def count_dictionary_matches(text, dictionary):
-    """Count matches for a specific dictionary in text"""
-    if pd.isna(text):
-        return 0
+class TextPreprocessor:
+    """Configurable text preprocessing for Instagram captions"""
     
-    text = str(text).lower()
-    count = 0
-    
-    for term in dictionary:
-        # Use word boundaries for exact matches
-        pattern = r'\b' + re.escape(term.lower()) + r'\b'
-        count += len(re.findall(pattern, text))
-    
-    return count
-
-def analyze_text_data(df, text_column, dictionaries):
-    """Analyze text data using dictionaries"""
-    df_analyzed = df.copy()
-    
-    # Apply dictionary analysis
-    for dict_name, dictionary in dictionaries.items():
-        col_name = f'{dict_name}_count'
-        df_analyzed[col_name] = df_analyzed[text_column].apply(
-            lambda x: count_dictionary_matches(x, dictionary)
-        )
-    
-    return df_analyzed
-
-def create_mario_visualization(df, dictionaries):
-    """Create Mario-themed visualizations"""
-    mario_style_plot()
-    
-    # Count columns for plotting
-    count_columns = [f'{dict_name}_count' for dict_name in dictionaries.keys()]
-    
-    if not count_columns:
-        st.error("❌ No count columns found!")
-        return None
-    
-    # Create figure with Mario-style layout
-    fig = plt.figure(figsize=(16, 12))
-    fig.suptitle('🍄 MARIO\'S SUPER TEXT ANALYTICS WORLD 🍄', 
-                 fontsize=20, fontweight='bold', color=MARIO_COLORS['red'])
-    
-    # Add decorative border
-    rect = Rectangle((0, 0), 1, 1, transform=fig.transFigure, 
-                    linewidth=8, edgecolor=MARIO_COLORS['brown'], 
-                    facecolor='none', zorder=1000)
-    fig.patches.append(rect)
-    
-    # 1. Total Counts Bar Chart (Top Left)
-    ax1 = plt.subplot(2, 3, 1)
-    totals = [df[col].sum() for col in count_columns]
-    colors = [MARIO_COLORS['red'], MARIO_COLORS['green'], MARIO_COLORS['blue'], 
-              MARIO_COLORS['orange'], MARIO_COLORS['purple']][:len(count_columns)]
-    
-    bars = ax1.bar(range(len(count_columns)), totals, color=colors, 
-                   edgecolor=MARIO_COLORS['black'], linewidth=3)
-    ax1.set_title('🎯 Total Matches by Category', fontweight='bold', fontsize=12)
-    ax1.set_xlabel('Dictionary Categories', fontweight='bold')
-    ax1.set_ylabel('Total Matches', fontweight='bold')
-    ax1.set_xticks(range(len(count_columns)))
-    ax1.set_xticklabels([col.replace('_count', '').replace('_', ' ').title() 
-                        for col in count_columns], rotation=45)
-    ax1.grid(True, alpha=0.3)
-    
-    # Add value labels on bars
-    for bar, total in zip(bars, totals):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                f'{int(total)}', ha='center', va='bottom', 
-                fontweight='bold', fontsize=10)
-    
-    # 2. Distribution by Speaker (Top Middle) - if Speaker column exists
-    if 'Speaker' in df.columns:
-        ax2 = plt.subplot(2, 3, 2)
-        speaker_counts = df.groupby('Speaker')[count_columns].sum()
+    def __init__(self, config: Dict = None):
+        """Initialize with custom configuration"""
+        # Default configuration
+        self.default_config = {
+            'remove_emojis': True,
+            'remove_urls': True,
+            'remove_emails': True,
+            'remove_hashtags': True,
+            'remove_mentions': True,
+            'normalize_unicode': True,
+            'add_period_if_missing': True,
+            'padding_token': '[PAD]'
+        }
         
-        if len(speaker_counts) > 0:
-            x_pos = np.arange(len(speaker_counts))
-            width = 0.35 if len(count_columns) <= 2 else 0.2
+        # Update with user config
+        self.config = self.default_config.copy()
+        if config:
+            self.config.update(config)
+        
+        # Compile regex patterns
+        self.url_pattern = re.compile(r'http[s]?://\S+')
+        self.email_pattern = re.compile(r'\S+@\S+')
+        self.hashtag_pattern = re.compile(r'#\w+')
+        self.mention_pattern = re.compile(r'@\w+')
+    
+    def clean_text(self, text: str) -> str:
+        """Clean Instagram caption text based on configuration"""
+        if not isinstance(text, str) or not text.strip():
+            return self.config['padding_token']
+        
+        # Remove emojis
+        if self.config['remove_emojis'] and EMOJI_AVAILABLE:
+            text = emoji.replace_emoji(text, replace='')
+        elif self.config['remove_emojis'] and not EMOJI_AVAILABLE:
+            # Fallback: simple emoji removal using regex
+            emoji_pattern = re.compile("["
+                u"\U0001F600-\U0001F64F"  # emoticons
+                u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                "]+", flags=re.UNICODE)
+            text = emoji_pattern.sub(r'', text)
+        
+        # Normalize unicode characters
+        if self.config['normalize_unicode'] and UNIDECODE_AVAILABLE:
+            text = unidecode(text)
+        
+        # Remove URLs
+        if self.config['remove_urls']:
+            text = self.url_pattern.sub('', text)
+        
+        # Remove emails
+        if self.config['remove_emails']:
+            text = self.email_pattern.sub('', text)
+        
+        # Remove hashtags
+        if self.config['remove_hashtags']:
+            text = self.hashtag_pattern.sub('', text)
+        
+        # Remove mentions
+        if self.config['remove_mentions']:
+            text = self.mention_pattern.sub('', text)
+        
+        # Clean whitespace
+        text = text.replace('\n', ' ').strip()
+        text = ' '.join(text.split())
+        
+        return text if text else self.config['padding_token']
+    
+    def split_sentences(self, text: str) -> List[str]:
+        """Split text into sentences"""
+        if text == self.config['padding_token'] or not text:
+            return []
+        
+        # Add period if missing
+        if self.config['add_period_if_missing'] and not text[-1] in '.!?':
+            text += '.'
+        
+        if NLTK_AVAILABLE:
+            from nltk.tokenize import sent_tokenize
+            sentences = sent_tokenize(text)
+        else:
+            # Fallback: simple sentence splitting
+            sentences = re.split(r'[.!?]+', text)
+            sentences = [s.strip() for s in sentences if s.strip()]
+        
+        return [s.strip() for s in sentences if s.strip()]
+
+def process_dataframe(df: pd.DataFrame, config: Dict, required_columns: Dict) -> pd.DataFrame:
+    """Process the uploaded dataframe"""
+    preprocessor = TextPreprocessor(config)
+    results = []
+    
+    # Create progress bar
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    for idx, row in df.iterrows():
+        # Update progress
+        progress = (idx + 1) / len(df)
+        progress_bar.progress(progress)
+        status_text.text(f'Processing row {idx + 1} of {len(df)}...')
+        
+        # Skip if no caption
+        caption_col = required_columns['caption']
+        if pd.isna(row[caption_col]):
+            continue
+        
+        # Clean caption
+        cleaned_caption = preprocessor.clean_text(row[caption_col])
+        
+        # Split into sentences
+        sentences = preprocessor.split_sentences(cleaned_caption)
+        
+        # Create records for each sentence
+        for turn, sentence in enumerate(sentences, 1):
+            result_row = {
+                'turn': turn,
+                'caption': row[caption_col],  # Original caption (context)
+                'transcript': sentence,       # Cleaned sentence (statement)
+            }
             
-            for i, col in enumerate(count_columns):
-                color = colors[i % len(colors)]
-                ax2.bar(x_pos + i*width, speaker_counts[col], width, 
-                       label=col.replace('_count', '').replace('_', ' ').title(), 
-                       color=color, edgecolor=MARIO_COLORS['black'], linewidth=2)
+            # Add other columns from original data
+            for col_name, original_col in required_columns.items():
+                if col_name != 'caption':
+                    result_row[col_name] = row[original_col]
             
-            ax2.set_title('👥 Matches by Speaker', fontweight='bold', fontsize=12)
-            ax2.set_xlabel('Speakers', fontweight='bold')
-            ax2.set_ylabel('Match Count', fontweight='bold')
-            ax2.set_xticks(x_pos + width * (len(count_columns)-1) / 2)
-            ax2.set_xticklabels(speaker_counts.index)
-            ax2.legend()
-            ax2.grid(True, alpha=0.3)
-    else:
-        # Create a placeholder or alternative visualization
-        ax2 = plt.subplot(2, 3, 2)
-        ax2.text(0.5, 0.5, 'No Speaker Column\nFound in Data', 
-                ha='center', va='center', transform=ax2.transAxes,
-                fontsize=16, fontweight='bold', color=MARIO_COLORS['red'])
-        ax2.set_title('👥 Speaker Analysis', fontweight='bold', fontsize=12)
-        ax2.axis('off')
+            results.append(result_row)
     
-    # 3. Match Distribution Histogram (Top Right)
-    ax3 = plt.subplot(2, 3, 3)
-    total_matches_per_row = df[count_columns].sum(axis=1)
-    ax3.hist(total_matches_per_row, bins=max(1, min(20, len(set(total_matches_per_row)))), 
-             color=MARIO_COLORS['yellow'], edgecolor=MARIO_COLORS['black'], 
-             linewidth=2, alpha=0.8)
-    ax3.set_title('📊 Distribution of Total Matches', fontweight='bold', fontsize=12)
-    ax3.set_xlabel('Total Matches per Row', fontweight='bold')
-    ax3.set_ylabel('Frequency', fontweight='bold')
-    ax3.grid(True, alpha=0.3)
+    # Clear progress indicators
+    progress_bar.empty()
+    status_text.empty()
     
-    # 4. Heatmap (Bottom Left)
-    ax4 = plt.subplot(2, 3, 4)
-    if len(df) > 1 and len(count_columns) > 1:
-        # Create correlation matrix
-        corr_matrix = df[count_columns].corr()
-        im = ax4.imshow(corr_matrix, cmap='RdYlBu_r', vmin=-1, vmax=1)
-        
-        # Add correlation values
-        for i in range(len(count_columns)):
-            for j in range(len(count_columns)):
-                text = ax4.text(j, i, f'{corr_matrix.iloc[i, j]:.2f}',
-                               ha="center", va="center", color="black", fontweight='bold')
-        
-        ax4.set_title('🔥 Category Correlation Matrix', fontweight='bold', fontsize=12)
-        ax4.set_xticks(range(len(count_columns)))
-        ax4.set_yticks(range(len(count_columns)))
-        ax4.set_xticklabels([col.replace('_count', '').replace('_', ' ').title() 
-                            for col in count_columns], rotation=45)
-        ax4.set_yticklabels([col.replace('_count', '').replace('_', ' ').title() 
-                            for col in count_columns])
-        plt.colorbar(im, ax=ax4, shrink=0.8)
-    else:
-        ax4.text(0.5, 0.5, 'Insufficient Data\nfor Correlation', 
-                ha='center', va='center', transform=ax4.transAxes,
-                fontsize=16, fontweight='bold', color=MARIO_COLORS['red'])
-        ax4.set_title('🔥 Category Correlation Matrix', fontweight='bold', fontsize=12)
-        ax4.axis('off')
-    
-    # 5. Time Series (if Turn column exists) (Bottom Middle)
-    if 'Turn' in df.columns:
-        ax5 = plt.subplot(2, 3, 5)
-        for i, col in enumerate(count_columns):
-            color = colors[i % len(colors)]
-            ax5.plot(df['Turn'], df[col], marker='o', linewidth=3, 
-                    markersize=6, label=col.replace('_count', '').replace('_', ' ').title(),
-                    color=color, markeredgecolor=MARIO_COLORS['black'], 
-                    markeredgewidth=1)
-        
-        ax5.set_title('📈 Matches Over Time (Turns)', fontweight='bold', fontsize=12)
-        ax5.set_xlabel('Turn Number', fontweight='bold')
-        ax5.set_ylabel('Match Count', fontweight='bold')
-        ax5.legend()
-        ax5.grid(True, alpha=0.3)
-    else:
-        ax5 = plt.subplot(2, 3, 5)
-        ax5.text(0.5, 0.5, 'No Turn Column\nFound in Data', 
-                ha='center', va='center', transform=ax5.transAxes,
-                fontsize=16, fontweight='bold', color=MARIO_COLORS['red'])
-        ax5.set_title('📈 Time Series Analysis', fontweight='bold', fontsize=12)
-        ax5.axis('off')
-    
-    # 6. Summary Statistics (Bottom Right)
-    ax6 = plt.subplot(2, 3, 6)
-    ax6.axis('off')
-    
-    # Create summary text
-    summary_text = "🏆 POWER-UP STATISTICS 🏆\n\n"
-    summary_text += f"📝 Total Rows Analyzed: {len(df)}\n"
-    summary_text += f"📊 Dictionary Categories: {len(dictionaries)}\n\n"
-    
-    for col in count_columns:
-        dict_name = col.replace('_count', '').replace('_', ' ').title()
-        total = df[col].sum()
-        avg = df[col].mean()
-        max_val = df[col].max()
-        summary_text += f"⭐ {dict_name}:\n"
-        summary_text += f"   Total: {total} | Avg: {avg:.2f} | Max: {max_val}\n\n"
-    
-    # Find highest scoring row
-    if len(count_columns) > 0:
-        total_per_row = df[count_columns].sum(axis=1)
-        if len(total_per_row) > 0:
-            max_idx = total_per_row.idxmax()
-            summary_text += f"🎯 Highest Scoring Row: #{max_idx}\n"
-            summary_text += f"   Total Matches: {total_per_row[max_idx]}"
-    
-    ax6.text(0.05, 0.95, summary_text, transform=ax6.transAxes, fontsize=9,
-             verticalalignment='top', fontweight='bold',
-             bbox=dict(boxstyle="round,pad=0.3", facecolor=MARIO_COLORS['yellow'], 
-                      edgecolor=MARIO_COLORS['black'], linewidth=3, alpha=0.9))
-    
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.93)
-    
-    return fig
+    return pd.DataFrame(results)
 
 def main():
-    # Header
-    st.markdown('''
-    <h1 class="main-header">
-        🍄 MARIO'S TEXT ANALYSIS CASTLE 🍄
-        <br><span class="coin">🪙</span> <span class="coin">⭐</span> <span class="coin">🪙</span>
-    </h1>
-    ''', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">🎮 Welcome to the most super text analysis tool in the Mushroom Kingdom! 🎮</p>', unsafe_allow_html=True)
+    """Main Streamlit app"""
+    
+    # Check for missing dependencies
+    missing_deps = []
+    if not NLTK_AVAILABLE:
+        missing_deps.append("nltk")
+    if not EMOJI_AVAILABLE:
+        missing_deps.append("emoji")
+    if not UNIDECODE_AVAILABLE:
+        missing_deps.append("unidecode")
+    
+    # Show installation instructions if dependencies are missing
+    if missing_deps:
+        st.error(f"🚫 Missing required packages: {', '.join(missing_deps)}")
+        st.code(f"pip install {' '.join(missing_deps)}")
+        st.markdown("**Or create a requirements.txt file with:**")
+        st.code("""streamlit
+pandas
+nltk
+emoji
+unidecode""")
+        st.stop()
+    
+    # Download NLTK data
+    if not download_nltk_data():
+        st.error("Failed to initialize NLTK. Please check your internet connection.")
+        st.stop()
+    
+    # Princess Peach welcome section
+    st.markdown("""
+    <div class="princess-welcome">
+        <div class="crown-decoration">👑✨👑</div>
+        <h2>Welcome to Princess Peach's Instagram</h2>
+        <p>"Transform your royal captions into elegant sentence-level data with the power of the Mushroom Kingdom!"</p>
+        <div class="crown-decoration">🌸💖🌸</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<h1 class="main-header">👑 Royal Caption Preprocessor 👑</h1>', unsafe_allow_html=True)
     
     # Sidebar for configuration
-    st.sidebar.header("🎮 Configuration Panel")
+    st.sidebar.markdown("### 👑 Royal Preprocessing Settings")
+    st.sidebar.markdown("*Customize your text transformation magic*")
     
-    # Default dictionaries
-    default_dictionaries = {
-        'urgency_marketing': {
-            'limited', 'limited time', 'limited run', 'limited edition', 'order now',
-            'last chance', 'hurry', 'while supplies last', 'before they\'re gone',
-            'selling out', 'selling fast', 'act now', 'don\'t wait', 'today only',
-            'expires soon', 'final hours', 'almost gone'
-        },
-        'exclusive_marketing': {
-            'exclusive', 'exclusively', 'exclusive offer', 'exclusive deal',
-            'members only', 'vip', 'special access', 'invitation only',
-            'premium', 'privileged', 'limited access', 'select customers',
-            'insider', 'private sale', 'early access'
-        },
-        'personal_milestone': {
-            'honor', 'success', 'promotion', 'achievement', 'recognition',
-            'accomplishment', 'milestone', 'proud', 'celebration', 'victory',
-            'winning', 'graduate', 'graduation', 'diploma', 'certificate',
-            'award', 'prize', 'champion', 'first place'
-        },
-        'gratitude_reflection': {
-            'graceful', 'honored', 'thanks', 'gratitude', 'blessing',
-            'grateful', 'appreciate', 'appreciation', 'thankful', 'blessed',
-            'fortunate', 'lucky', 'privilege', 'humbled', 'touched',
-            'moved', 'heartfelt', 'sincere'
-        },
-        'local_business': {
-            'shop local', 'neighborhood', 'community', 'local store', 'locally owned',
-            'hometown', 'family business', 'local economy', 'support local',
-            'community business', 'neighborhood shop', 'local market',
-            'regional', 'nearby', 'around the corner'
-        },
-        'social_proof': {
-            'satisfied customer', 'testimonial', 'proven results', 'client says',
-            'recommendation', 'review', 'rating', 'feedback', 'endorsement',
-            'word of mouth', 'referral', 'trusted by', 'recommended by'
-        },
-        'discount_pricing': {
-            'markdown', 'affordable', 'value', 'budget', 'bargain',
-            'discount', 'sale', 'reduced price', 'special price', 'deal',
-            'offer', 'promotion', 'savings', 'cheap', 'low cost',
-            'price cut'
-        }
-    }
-    
-    # File upload
-    st.sidebar.subheader("📁 Upload Your Dataset")
-    uploaded_file = st.sidebar.file_uploader(
-        "Choose a CSV file", 
-        type=['csv'],
-        help="Upload your CSV file containing text data to analyze"
-    )
-    
-    # Text column selection
-    st.sidebar.subheader("📝 Select Text Column")
-    st.sidebar.write("Choose the column containing text to analyze:")
-    
-    # Default column options when no file is uploaded
-    default_columns = ["ID", "Turn", "Speaker", "Context", "Statement", "Tactic_human", "Tactic_human_reasoning"]
-    
-    # If file is uploaded, use actual columns, otherwise use defaults
-    if uploaded_file is not None:
-        try:
-            # Read just the header to get column names
-            temp_df = pd.read_csv(uploaded_file, nrows=0)
-            available_columns = list(temp_df.columns)
-            uploaded_file.seek(0)  # Reset file pointer
-        except:
-            available_columns = default_columns
-    else:
-        available_columns = default_columns
-    
-    # Find default selection
-    if "Statement" in available_columns:
-        default_index = available_columns.index("Statement")
-    elif "Context" in available_columns:
-        default_index = available_columns.index("Context")
-    elif len(available_columns) > 0:
-        default_index = 0
-    else:
-        default_index = 0
-    
-    text_column = st.sidebar.selectbox(
-        "Select column:",
-        options=available_columns,
-        index=default_index,
-        help="Choose the column that contains the text you want to analyze"
-    )
-    
-    # Dictionary configuration
-    st.sidebar.subheader("📚 Dictionary Configuration")
-    
-    # Use session state to manage dictionaries
-    if 'dictionaries' not in st.session_state:
-        st.session_state.dictionaries = default_dictionaries.copy()
-    
-    # Dictionary editor
-    dict_option = st.sidebar.selectbox(
-        "Choose action:",
-        ["View/Edit Existing", "Add New Dictionary", "Reset to Default"]
-    )
-    
-    if dict_option == "Reset to Default":
-        if st.sidebar.button("🔄 Reset Dictionaries", key="reset_dicts"):
-            st.session_state.dictionaries = default_dictionaries.copy()
-            st.sidebar.success("✅ Dictionaries reset to default!")
-    
-    elif dict_option == "Add New Dictionary":
-        new_dict_name = st.sidebar.text_input("Dictionary Name:")
-        new_dict_terms = st.sidebar.text_area(
-            "Terms (one per line):",
-            height=100,
-            help="Enter each term on a new line"
-        )
-        
-        if st.button("➕ Add Dictionary", key="add_new_dict"):
-            if new_dict_name and new_dict_terms:
-                terms = set(term.strip() for term in new_dict_terms.split('\n') if term.strip())
-                st.session_state.dictionaries[new_dict_name] = terms
-                st.sidebar.success(f"✅ Added '{new_dict_name}' dictionary with {len(terms)} terms!")
-            else:
-                st.sidebar.error("❌ Please provide both name and terms!")
-    
-    elif dict_option == "View/Edit Existing":
-        if st.session_state.dictionaries:
-            selected_dict = st.sidebar.selectbox(
-                "Select dictionary to edit:",
-                list(st.session_state.dictionaries.keys())
-            )
-            
-            current_terms = '\n'.join(sorted(st.session_state.dictionaries[selected_dict]))
-            edited_terms = st.sidebar.text_area(
-                f"Edit {selected_dict} terms:",
-                value=current_terms,
-                height=150,
-                help="Modify terms - one per line"
-            )
-            
-            col1, col2 = st.sidebar.columns(2)
-            with col1:
-                if st.button("💾 Save Changes", key=f"save_{selected_dict}"):
-                    terms = set(term.strip() for term in edited_terms.split('\n') if term.strip())
-                    st.session_state.dictionaries[selected_dict] = terms
-                    st.sidebar.success("✅ Dictionary updated!")
-            
-            with col2:
-                if st.button("🗑️ Delete Dict", key=f"delete_{selected_dict}"):
-                    if selected_dict in st.session_state.dictionaries:
-                        del st.session_state.dictionaries[selected_dict]
-                        st.sidebar.success("✅ Dictionary deleted!")
-                        st.rerun()
+    # Preprocessing options with princess-themed descriptions
+    config = {}
+    config['remove_emojis'] = st.sidebar.checkbox("✨ Remove Emojis", value=True, help="Remove emoji characters from text")
+    config['remove_urls'] = st.sidebar.checkbox("🔗 Remove URLs", value=True, help="Remove web links")
+    config['remove_emails'] = st.sidebar.checkbox("📧 Remove Emails", value=True, help="Remove email addresses")
+    config['remove_hashtags'] = st.sidebar.checkbox("# Remove Hashtags", value=True, help="Remove hashtag symbols")
+    config['remove_mentions'] = st.sidebar.checkbox("@ Remove Mentions", value=True, help="Remove @ mentions")
+    config['normalize_unicode'] = st.sidebar.checkbox("🌟 Normalize Unicode", value=True, help="Convert special characters")
+    config['add_period_if_missing'] = st.sidebar.checkbox("📝 Add Period if Missing", value=True, help="Add periods to complete sentences")
+    config['padding_token'] = st.sidebar.text_input("💫 Padding Token", value="[PAD]", help="Token for empty content")
     
     # Main content area
-    if uploaded_file is not None:
-        try:
-            # Load data
-            df = pd.read_csv(uploaded_file)
-            
-            # Display data info
-            st.markdown('<div class="success-box">✅ File uploaded successfully!</div>', unsafe_allow_html=True)
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("📊 Total Rows", len(df))
-            with col2:
-                st.metric("📋 Total Columns", len(df.columns))
-            with col3:
-                st.metric("📚 Dictionaries", len(st.session_state.dictionaries))
-            
-            # Show data preview
-            st.subheader("📋 Data Preview")
-            st.dataframe(df.head(10))
-            
-            # Check if text column exists
-            if text_column not in df.columns:
-                st.error(f"❌ Column '{text_column}' not found in the dataset!")
-                st.info(f"Available columns: {', '.join(df.columns)}")
-                return
-            
-            # Analysis button
-            if st.button("🚀 Start Mario's Super Analysis!", type="primary"):
-                if not st.session_state.dictionaries:
-                    st.error("❌ No dictionaries configured! Please add at least one dictionary.")
-                    return
-                
-                with st.spinner("🍄 Mario is analyzing your text... Please wait!"):
-                    # Perform analysis
-                    df_analyzed = analyze_text_data(df, text_column, st.session_state.dictionaries)
-                    
-                    # Display results summary
-                    st.subheader("🎯 Analysis Results")
-                    
-                    # Create metrics for each dictionary
-                    count_columns = [f'{dict_name}_count' for dict_name in st.session_state.dictionaries.keys()]
-                    
-                    if len(count_columns) <= 4:
-                        cols = st.columns(len(count_columns))
-                        for i, col_name in enumerate(count_columns):
-                            dict_name = col_name.replace('_count', '').replace('_', ' ').title()
-                            total_matches = df_analyzed[col_name].sum()
-                            with cols[i]:
-                                st.metric(f"⭐ {dict_name}", total_matches)
-                    else:
-                        # For more than 4 dictionaries, use a different layout
-                        for col_name in count_columns:
-                            dict_name = col_name.replace('_count', '').replace('_', ' ').title()
-                            total_matches = df_analyzed[col_name].sum()
-                            st.metric(f"⭐ {dict_name}", total_matches)
-                    
-                    # Create and display visualization
-                    st.subheader("📊 Mario's Super Visualizations")
-                    fig = create_mario_visualization(df_analyzed, st.session_state.dictionaries)
-                    
-                    if fig:
-                        st.pyplot(fig)
-                        plt.close(fig)  # Close the figure to free memory
-                    
-                    # Show detailed results
-                    st.subheader("📈 Detailed Results")
-                    st.dataframe(df_analyzed)
-                    
-                    # Download button for results
-                    csv_buffer = io.StringIO()
-                    df_analyzed.to_csv(csv_buffer, index=False)
-                    csv_data = csv_buffer.getvalue()
-                    
-                    st.download_button(
-                        label="💾 Download Analysis Results",
-                        data=csv_data,
-                        file_name="mario_analysis_results.csv",
-                        mime="text/csv"
-                    )
-                    
-                    st.markdown('<div class="success-box">🎉 ANALYSIS COMPLETE! THANK YOU MARIO! 🎉</div>', unsafe_allow_html=True)
-        
-        except Exception as e:
-            st.error(f"❌ Error processing file: {str(e)}")
+    col1, col2 = st.columns([2, 1])
     
-    else:
-        # Show instructions when no file is uploaded
+    with col1:
+        st.markdown("## 📜 Upload Your Royal Dataset")
+        uploaded_file = st.file_uploader(
+            "Choose a CSV file fit for a princess",
+            type="csv",
+            help="Upload your Instagram posts dataset in CSV format"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Read the uploaded file
+                df = pd.read_csv(uploaded_file)
+                st.success(f"✨ Successfully loaded {len(df)} royal posts and {len(df.columns)} data columns! ✨")
+                
+                # Show data preview
+                st.markdown("## 👀 Royal Data Preview")
+                st.dataframe(df.head(), use_container_width=True)
+                
+                # Column mapping
+                st.markdown("## 🏰 Column Mapping")
+                st.markdown("*Map your dataset columns to the royal requirements:*")
+                
+                available_columns = df.columns.tolist()
+                
+                required_columns = {}
+                required_columns['shortcode'] = st.selectbox(
+                    "👑 Royal Post ID Column", 
+                    available_columns,
+                    help="Unique identifier for each royal post"
+                )
+                required_columns['caption'] = st.selectbox(
+                    "💬 Caption Column", 
+                    available_columns,
+                    help="Column containing the royal Instagram captions"
+                )
+                required_columns['post_url'] = st.selectbox(
+                    "🔗 Post URL Column (Optional)", 
+                    ['None'] + available_columns,
+                    help="Column containing post URLs (optional)"
+                )
+                
+                # Process button
+                if st.button("🚀 Begin Royal Processing", type="primary"):
+                    with st.spinner("Princess Peach is working her magic... ✨"):
+                        # Filter out 'None' selections
+                        filtered_columns = {k: v for k, v in required_columns.items() if v != 'None'}
+                        
+                        # Process the data
+                        result_df = process_dataframe(df, config, filtered_columns)
+                        
+                        st.success(f"🎉 Royal success! Created {len(result_df)} elegant sentence records from {len(df)} posts! 👑")
+                        
+                        # Show results preview
+                        st.markdown("## 📋 Your Royal Results")
+                        st.dataframe(result_df.head(10), use_container_width=True)
+                        
+                        # Download button
+                        csv_buffer = io.StringIO()
+                        result_df.to_csv(csv_buffer, index=False)
+                        csv_data = csv_buffer.getvalue()
+                        
+                        st.download_button(
+                            label="💾 Download Your Royal Data",
+                            data=csv_data,
+                            file_name="princess_peach_ig_posts_preprocessed.csv",
+                            mime="text/csv",
+                            type="primary"
+                        )
+                        
+                        # Show statistics
+                        st.markdown("## 📊 Royal Processing Statistics")
+                        col_stat1, col_stat2, col_stat3 = st.columns(3)
+                        
+                        with col_stat1:
+                            st.metric("👑 Original Posts", len(df))
+                        
+                        with col_stat2:
+                            st.metric("✨ Sentence Records", len(result_df))
+                        
+                        with col_stat3:
+                            avg_sentences = len(result_df) / len(df) if len(df) > 0 else 0
+                            st.metric("💫 Avg Sentences/Post", f"{avg_sentences:.2f}")
+                        
+            except Exception as e:
+                st.error(f"👸 Oops! Princess Peach encountered an error: {str(e)}")
+                st.info("💡 Please make sure your CSV file is properly formatted for the royal court!")
+    
+    with col2:
+        st.markdown("## 📖 Royal Instructions")
         st.markdown("""
-        ## 🎮 How to Use Mario's Text Analysis Castle:
+        ### 👑 How to use Princess Peach's Processor:
         
-        1. **📁 Upload Your Data**: Use the file uploader in the sidebar to upload a CSV file
-        2. **📝 Set Text Column**: Specify which column contains the text you want to analyze
-        3. **📚 Configure Dictionaries**: 
-           - View and edit existing dictionaries
-           - Add new dictionaries with custom terms
-           - Reset to default marketing dictionaries
-        4. **🚀 Run Analysis**: Click the analysis button to start Mario's super text analysis
-        5. **📊 View Results**: Explore the Mario-themed visualizations and download your results
+        1. **📜 Upload CSV**: Choose your royal Instagram posts dataset
         
-        ### 📋 Required CSV Format:
-        Your CSV file should have at least one text column for analysis. Common column names include:
-        - `Statement`, `Text`, `Content`, `Message`, `Description`
+        2. **⚙️ Configure**: Adjust magical preprocessing options in the sidebar
         
-        Optional columns for enhanced analysis:
-        - `Speaker` or `Author` (for speaker-based analysis)
-        - `Turn` or `Time` (for time series analysis)
+        3. **🗺️ Map Columns**: Select which columns contain your precious data
         
-        ### 🍄 Default Dictionaries:
+        4. **✨ Process**: Click the royal processing button to transform your data
+        
+        5. **💾 Download**: Save your elegantly processed results
+        
+        ### 📋 Expected Royal Input Format:
+        Your CSV should contain at least:
+        - **💬 Caption column**: Instagram post captions
+        - **👑 ID column**: Unique post identifier
+        - **🔗 URL column**: Post URLs (optional)
+        
+        ### 📊 Royal Output Format:
+        - **turn**: Sentence number within each post
+        - **caption**: Original royal caption text
+        - **transcript**: Elegantly cleaned sentence
+        - **Other columns**: Preserved from your input
+        
+        ### 🌸 Princess Peach's Tips:
+        *"Remember, darling! Clean data is like a well-organized castle - everything has its perfect place!"* 👸✨
         """)
         
-        # Display dictionaries in a more organized way
-        col1, col2 = st.columns(2)
-        
-        dict_items = list(default_dictionaries.items())
-        mid_point = len(dict_items) // 2
-        
-        with col1:
-            for dict_name, terms in dict_items[:mid_point]:
-                st.write(f"**{dict_name.replace('_', ' ').title()}** ({len(terms)} terms)")
-                st.write(f"Sample: {', '.join(sorted(list(terms))[:5])}...")
-                st.write("")
-        
-        with col2:
-            for dict_name, terms in dict_items[mid_point:]:
-                st.write(f"**{dict_name.replace('_', ' ').title()}** ({len(terms)} terms)")
-                st.write(f"Sample: {', '.join(sorted(list(terms))[:5])}...")
-                st.write("")
+        st.markdown("## ⚙️ Current Royal Settings")
+        st.json(config)
 
 if __name__ == "__main__":
     main()
