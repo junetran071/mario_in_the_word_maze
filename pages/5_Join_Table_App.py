@@ -220,7 +220,7 @@ def main():
     st.markdown("### Welcome to Mario's CSV Join Tool!𓍊⁺˚⋆｡°🍄₊")
     
     # What This Tool Can Do section
-    st.markdown("#### 🥦 What This Tool Can Do:")
+    st.markdown("#### 👨🏻‍🚒 What This Tool Can Do:")
     st.markdown("""
     - Join two CSV files using different methods (inner, left, right, outer)
     - Handle files up to 10 MB each
@@ -229,7 +229,7 @@ def main():
     """)
     
     # Tips section
-    st.markdown("#### 🥑 Mario's Tips:")
+    st.markdown("#### 👨🏻‍🚒 Mario's Tips:")
     st.markdown("""
     - Make sure your CSV files have at least one common column for joining
     - Check the first few rows of your data before joining
@@ -240,7 +240,7 @@ def main():
     
     # File upload section
     st.markdown("<div class='step-header'>", unsafe_allow_html=True)
-    st.markdown("<span class='step-number'>⬆️</span> Upload Your CSV Files", unsafe_allow_html=True)
+    st.markdown("<span class='step-number'>🕹️</span> Upload Your CSV Files", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     st.write("Let's start by uploading your CSV files! Each file should be 10 MB or smaller.")
     
