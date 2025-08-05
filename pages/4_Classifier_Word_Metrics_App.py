@@ -2,17 +2,15 @@ import streamlit as st
 import pandas as pd
 import io
 
-# --- Mario Theme Styling ---
+# --- Mario Theme Styling with White Background ---
 mario_css = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 html, body {
-    background-image: url('https://www.transparenttextures.com/patterns/stardust.png'), 
-                      url('https://wallpapercave.com/wp/wp2854319.png');
-    background-size: cover;
+    background-color: white !important;
     font-family: 'Press Start 2P', cursive;
-    color: #fff;
+    color: #000;
 }
 h1, h2, h3 {
     color: #ffd60a;
@@ -43,6 +41,7 @@ h1, h2, h3 {
 </style>
 """
 
+# Coin sound effect
 coin_sound = """
 <audio id="coinSound" src="https://www.myinstants.com/media/sounds/mario-coin.mp3"></audio>
 <script>
@@ -52,11 +51,12 @@ function playCoinSound() {
 </script>
 """
 
+# Page config
 st.set_page_config(page_title="Super Mario Classifier Metrics", layout="centered")
 st.markdown(mario_css, unsafe_allow_html=True)
 st.markdown(coin_sound, unsafe_allow_html=True)
 
-# 🎯 Predefined Classifiers
+# Predefined classifiers
 classifiers = [
     "urgency_marketing", "exclusive_marketing", "personal_milestone",
     "gratitude_reflection", "local_business", "social_proof", "discount_pricing"
@@ -82,7 +82,7 @@ if uploaded_file:
     st.header("🍄 2. Choose Text Column")
     text_column = st.selectbox("📝 Select the column that contains the post text", df.columns.tolist())
 
-    # Step 3: Process
+    # Step 3: Generate Metrics
     st.header("🚀 3. Generate Metrics")
 
     if st.button("🔊 Generate Statement-Level Metrics"):
@@ -115,6 +115,7 @@ if uploaded_file:
         else:
             st.error("No valid classifier columns found in your dataset.")
 
+    # Step 4: Aggregate by ID
     if st.button("👑 Boss Level: Aggregate by ID"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
 
