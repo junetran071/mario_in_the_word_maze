@@ -4,6 +4,7 @@ import pandas as pd
 # Inject Super Mario Theme CSS and HTML
 st.set_page_config(page_title="Super Mario Classifier Metrics", layout="centered")
 
+# --- Super Mario-themed CSS ---
 mario_css = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -48,7 +49,7 @@ h1, h2, h3 {
 </style>
 """
 
-# Optional: Mario coin sound effect
+# --- Coin Sound FX ---
 coin_sound = """
 <audio id="coinSound" src="https://www.myinstants.com/media/sounds/mario-coin.mp3"></audio>
 <script>
@@ -58,18 +59,19 @@ function playCoinSound() {
 </script>
 """
 
+# Apply theme and sound
 st.markdown(mario_css, unsafe_allow_html=True)
 st.markdown(coin_sound, unsafe_allow_html=True)
 
-# Title
+# --- App Content ---
 st.title("🍄 Super Mario Classifier Metrics")
 st.write("🏰 Help Mario analyze your Instagram posts using classifiers and unlock your data’s hidden power-ups!")
 
-# Step 1 - Upload
+# Step 1: Upload
 st.header("🧱 1. Upload Your Data")
 uploaded_file = st.file_uploader("📁 Upload your Instagram CSV data", type=["csv"])
 
-# Step 2 - Classifiers
+# Step 2: Classifiers
 st.header("🍄 2. Choose Your Classifier Power-Ups")
 classifiers_input = st.text_area(
     "🎯 Enter classifier names (comma-separated):",
@@ -77,17 +79,22 @@ classifiers_input = st.text_area(
 )
 classifiers = [c.strip() for c in classifiers_input.split(",")]
 
-# Step 3 - Process Data
+# Step 3: Process
 st.header("⭐ 3. Process Your Adventure Data")
 
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+    # Fix encoding issue
+    try:
+        df = pd.read_csv(uploaded_file, encoding='utf-8', errors='replace')
+    except UnicodeDecodeError:
+        df = pd.read_csv(uploaded_file, encoding='latin1')
 
-    if st.button("🔊 Generate Statement-Level Metrics", on_click=None):
+    # Generate Statement-Level Metrics
+    if st.button("🔊 Generate Statement-Level Metrics"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
 
         if "text" not in df.columns:
-            st.error("Missing 'text' column.")
+            st.error("Missing 'text' column in your data.")
         else:
             metrics_df = df.copy()
             for classifier in classifiers:
@@ -104,6 +111,7 @@ if uploaded_file is not None:
             st.subheader("📊 Final Score: Statement Metrics")
             st.dataframe(metrics_df)
 
+    # Aggregate by ID
     if st.button("👑 Boss Level: Aggregate by ID"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
 
@@ -115,4 +123,3 @@ if uploaded_file is not None:
             st.warning("⚠️ No 'ID' column found for aggregation.")
 else:
     st.info("🧭 Upload your CSV to begin the adventure!")
-
