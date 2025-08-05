@@ -38,11 +38,13 @@ st.markdown('<h1 class="main-header">🍄 Mario Text Classifier 🍄</h1>', unsa
 
 def create_classification_dictionary():
     return {
-        "product_quality": ["excellent", "perfect", "classic", "gorgeous", "quality", "premium", "superior", "outstanding"],
-        "urgency": ["last week", "limited time", "hurry", "deadline", "expires", "final", "closing", "urgent"],
-        "personal_connection": ["smile", "goal", "personal", "relationship", "connect", "touch", "care", "understand"],
-        "travel_business": ["travel", "suit", "business", "professional", "work", "office", "corporate", "formal"],
-        "seasonal_holiday": ["holidays", "christmas", "season", "winter", "summer", "spring", "fall", "celebration"]
+        "urgency_marketing": ["now", "today", "limited time", "act fast", "hurry", "urgent", "last chance"],
+        "exclusive_marketing": ["exclusive", "members only", "invite only", "vip", "limited access"],
+        "personal_milestone": ["birthday", "anniversary", "personal win", "milestone", "special moment"],
+        "gratitude_reflection": ["thank you", "grateful", "appreciate", "reflecting", "gratitude"],
+        "local_business": ["local", "community", "neighborhood", "support small", "near you"],
+        "social_proof": ["customers love", "top rated", "testimonials", "as seen on", "popular choice"],
+        "discount_pricing": ["sale", "discount", "% off", "bogo", "markdown", "deal"]
     }
 
 
@@ -148,4 +150,5 @@ if uploaded_file is not None:
             )
 else:
     st.info("Upload a CSV file to begin classification.")
+
 
