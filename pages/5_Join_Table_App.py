@@ -15,16 +15,13 @@ st.markdown("""
 <style>
     /* Main background with Mario light blue */
 
-    body {
-        color: black;
-    }
     .stApp {
-        background: linear-gradient(135deg, #B3E5FC 0%, #E3F2FD 50%, #B3E5FC 100%);
+        background: linear-gradient(135deg, #B3E5FC 0%, #213d85 50%, #B3E5FC 100%);
     }
     
     /* Header styling with Mario colors */
     .main-header {
-        background: linear-gradient(90deg, #1976D2, #2196F3, #42A5F5);
+        background: linear-gradient(90deg, #1976D2, #2196F3, #c98653);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
