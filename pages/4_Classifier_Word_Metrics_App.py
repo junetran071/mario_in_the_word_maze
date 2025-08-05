@@ -52,7 +52,6 @@ function playCoinSound() {
 </script>
 """
 
-# Inject styles and config
 st.set_page_config(page_title="Super Mario Classifier Metrics", layout="centered")
 st.markdown(mario_css, unsafe_allow_html=True)
 st.markdown(coin_sound, unsafe_allow_html=True)
@@ -84,7 +83,7 @@ if uploaded_file:
         "🎯 Enter classifier column names (comma-separated):",
         default_guess
     )
-    classifiers = [c.strip() for c in classifiers_input.split(",")]
+    classifiers = [c.strip() for c in classifiers_input.split(",") if c.strip()]
 
     # Step 4: Process
     st.header("🚀 4. Generate Metrics")
@@ -103,18 +102,26 @@ if uploaded_file:
                     lambda row: (len(str(row[text_column]).split()) if row[classifier] == 1 else 0) / max(len(str(row[text_column]).split()), 1),
                     axis=1
                 )
-
         st.subheader("📊 Final Score: Statement Metrics")
         st.dataframe(metrics_df)
 
     if st.button("👑 Boss Level: Aggregate by ID"):
         st.markdown("<script>playCoinSound()</script>", unsafe_allow_html=True)
 
-        if "ID" in df.columns:
-            agg_df = df.groupby("ID")[classifiers].sum().reset_index()
-            st.subheader("🏁 Aggregated Metrics by ID")
-            st.dataframe(agg_df)
-        else:
+        if "ID" not in df.columns:
             st.warning("⚠️ No 'ID' column found for aggregation.")
+        else:
+            valid_classifiers = [c for c in classifiers if c in df.columns]
+            invalid_classifiers = [c for c in classifiers if c not in df.columns]
+
+            if invalid_classifiers:
+                st.warning(f"🚫 These classifier columns were not found: {', '.join(invalid_classifiers)}")
+
+            if valid_classifiers:
+                agg_df = df.groupby("ID")[valid_classifiers].sum().reset_index()
+                st.subheader("🏁 Aggregated Metrics by ID")
+                st.dataframe(agg_df)
+            else:
+                st.warning("⚠️ None of the selected classifier columns exist in the data.")
 else:
     st.info("🧭 Upload your CSV to begin the adventure!")
