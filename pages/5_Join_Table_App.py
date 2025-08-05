@@ -240,7 +240,7 @@ def main():
     
     # File upload section
     st.markdown("<div class='step-header'>", unsafe_allow_html=True)
-    st.markdown("<span class='step-number'>1</span> Upload Your CSV Files", unsafe_allow_html=True)
+    st.markdown("<span class='step-number'>⬆️</span> Upload Your CSV Files", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
     st.write("Let's start by uploading your CSV files! Each file should be 10 MB or smaller.")
     
