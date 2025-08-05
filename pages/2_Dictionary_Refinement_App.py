@@ -400,7 +400,122 @@ def main():
                 st.error("🚫 Mamma mia! Please load data and set dictionary first!")
     
     # Main content area
-    if st.session_state.data is not None:
+    if st.session_state.data is None:
+        # Landing page instructions when no data is loaded
+        st.markdown("""
+        ## 🏁 Welcome to Toad's Racing Tutorial!
+        
+        **Wahoo!** Ready to race through text classification? Here's how to use Toad's super mushroom power:
+        """)
+        
+        # Instructions in colorful cards
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div class="mushroom-card">
+                <h3 style="color: white; margin-top: 0;">🍄 Step 1: Load Data</h3>
+                <p style="color: white; margin-bottom: 0;">
+                    <strong>Choose your racing fuel:</strong><br>
+                    • 🏁 Use Toad's sample data (quick start!)<br>
+                    • 📁 Upload your own CSV file<br>
+                    • 📝 Paste CSV text directly<br><br>
+                    <strong>Your CSV needs:</strong><br>
+                    • Text column (statements to classify)<br>
+                    • Optional: Answer column (0/1 values)
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="mushroom-card">
+                <h3 style="color: white; margin-top: 0;">📚 Step 2: Set Keywords</h3>
+                <p style="color: white; margin-bottom: 0;">
+                    <strong>Enter your mushroom keywords:</strong><br>
+                    • Edit the default keyword list<br>
+                    • Add your own domain terms<br>
+                    • Separate with commas<br>
+                    • Click "Save Mushroom Dictionary"<br><br>
+                    <strong>Examples:</strong><br>
+                    sale, discount, offer, limited, special
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div class="mushroom-card">
+                <h3 style="color: white; margin-top: 0;">🏁 Step 3: Race!</h3>
+                <p style="color: white; margin-bottom: 0;">
+                    <strong>Start your engines:</strong><br>
+                    • Click "START RACING!" button<br>
+                    • Watch Toad analyze your text<br>
+                    • View performance metrics<br>
+                    • Explore visualizations<br>
+                    • Export your results<br><br>
+                    <strong>Yahoo! Let's-a-go!</strong>
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # How it works section
+        st.markdown("### 🔧 How Toad's Mushroom Power Works")
+        
+        with st.expander("🍄 Click to learn about the classification magic!", expanded=False):
+            st.markdown("""
+            **Toad's Super Smart Classification Process:**
+            
+            1. **🔍 Keyword Matching**: Toad searches your text for mushroom keywords
+            2. **🎯 Binary Classification**: Statements with ANY keyword = Positive (1), No keywords = Negative (0)
+            3. **📊 Continuous Scoring**: Score = (Number of matched keywords) / (Total keywords)
+            4. **⚡ Performance Metrics**: 
+               - **Accuracy**: Overall correctness 
+               - **Precision**: How accurate positive predictions are
+               - **Recall**: How many positives Toad caught
+               - **F1 Score**: Balance of precision and recall
+            
+            **🍄 Perfect for:**
+            - Marketing message classification
+            - Spam detection
+            - Content categorization
+            - Social media analysis
+            - Any text classification task!
+            """)
+        
+        # CSV format example
+        st.markdown("### 📋 CSV Format Example")
+        
+        with st.expander("📁 Click to see CSV format requirements", expanded=False):
+            st.markdown("**Your CSV should look like this:**")
+            
+            example_csv = pd.DataFrame({
+                'ID': [1, 2, 3, 4],
+                'Statement': [
+                    'Check out our SPRING SALE with amazing discounts!',
+                    'The weather is nice today.',
+                    'LIMITED TIME OFFER on all items!',
+                    'Thank you for your message.'
+                ],
+                'Answer': [1, 0, 1, 0]
+            })
+            
+            st.dataframe(example_csv, use_container_width=True)
+            
+            st.markdown("""
+            **Requirements:**
+            - **Text Column**: Contains statements to classify (any name: "Statement", "Text", "Message", etc.)
+            - **Ground Truth Column** (optional): Binary answers (0 = negative, 1 = positive)
+            - **At least 2 rows**: Header + data
+            
+            **Toad will auto-detect your columns!** 🍄
+            """)
+        
+        # Quick start section
+        st.markdown("### 🚀 Quick Start Guide")
+        st.info("**New to text classification?** Start with Toad's sample data! Click '🍄 Load Sample Data' in the sidebar, then 'START RACING!' to see the magic happen!")
+        
+    elif st.session_state.data is not None:
         st.markdown("## 🔍 Racing Data Preview")
         st.dataframe(st.session_state.data.head(), use_container_width=True)
         
