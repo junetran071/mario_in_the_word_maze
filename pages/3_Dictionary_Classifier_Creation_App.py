@@ -3,13 +3,17 @@ import pandas as pd
 import re
 from collections import defaultdict
 
-# Mario theme CSS
+# Mario theme CSS with white background
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
     .stApp {
-        background: linear-gradient(to bottom, #fceabb, #f8b500);
+        background-color: white !important;
         font-family: 'Press Start 2P', cursive;
+        color: #000;
     }
+
     .main-header {
         color: #ff0000;
         text-align: center;
@@ -17,24 +21,43 @@ st.markdown("""
         text-shadow: 2px 2px #000;
         margin-bottom: 20px;
     }
+
     .stButton > button {
         background-color: #ff0000;
         color: white;
         font-weight: bold;
         border-radius: 10px;
+        padding: 10px 20px;
+        border: 3px solid yellow;
+        box-shadow: 2px 2px #000;
+        font-family: 'Press Start 2P', cursive;
     }
+
     .stDownloadButton button {
         background-color: #28a745;
         color: white;
         font-weight: bold;
         border-radius: 10px;
+        padding: 8px 16px;
+        border: 2px solid #1e7e34;
+        box-shadow: 2px 2px #000;
+        font-family: 'Press Start 2P', cursive;
+    }
+
+    .stTextInput input, .stSelectbox select, .stFileUploader, .stTextArea textarea {
+        border: 2px solid #ffd60a !important;
+        background-color: #fff3cd !important;
+        color: #000 !important;
+        font-weight: bold !important;
+        font-family: 'Press Start 2P', cursive !important;
     }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 """, unsafe_allow_html=True)
 
+# Header
 st.markdown('<h1 class="main-header">🎄 Mario Text Classifier 🎄</h1>', unsafe_allow_html=True)
 
+# Classification Dictionary
 def create_classification_dictionary():
     return {
         "urgency_marketing": ["now", "today", "limited time", "act fast", "hurry", "urgent", "last chance"],
@@ -71,6 +94,7 @@ def classify_dataframe(df, text_column, dictionary):
         classifications.append(classification)
     return classifications
 
+# UI
 st.write("Upload your CSV file and classify text using keyword dictionaries")
 
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
