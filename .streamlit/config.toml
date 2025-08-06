@@ -1,1 +1,4 @@
+[server]
+maxUploadSize = 100
 
+Increase Streamlit file upload limit
