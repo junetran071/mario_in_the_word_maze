@@ -374,30 +374,69 @@ def main():
         # Classification button
         st.markdown("### 🏁 Step 3: Super Speed Classification")
         
-        if st.button("🍄 START RACING!", type="primary", help="Let's-a-go! Begin classification!"):
-            if st.session_state.data is not None and st.session_state.dictionary:
-                with st.spinner("🏁 Toad is racing through your data at super speed..."):
-                    st.session_state.results = classifier.classify_text(
-                        st.session_state.data, 
-                        st.session_state.dictionary, 
-                        text_column, 
-                        ground_truth_column
-                    )
-                    
-                    if ground_truth_column:
-                        st.session_state.metrics = classifier.calculate_metrics(st.session_state.results)
-                        st.session_state.keyword_analysis = classifier.analyze_keywords(
-                            st.session_state.data, 
-                            st.session_state.results, 
-                            st.session_state.dictionary, 
-                            text_column, 
-                            ground_truth_column
-                        )
-                
-                st.success("🏁 Wahoo! Classification complete! Toad finished the race!")
-                st.balloons()
-            else:
-                st.error("🚫 Mamma mia! Please load data and set dictionary first!")
+        # Mode selection
+        classification_mode = st.radio(
+            "🔬 Choose Racing Mode:",
+            ["🏁 Standard Classification", "🔬 Researcher Mode (Create Labels)"],
+            help="Standard: Classify with existing data | Researcher: Help create ground truth labels"
+        )
+        
+        if classification_mode == "🏁 Standard Classification":
+            if st.button("🍄 START RACING!", type="primary", help="Let's-a-go! Begin classification!"):
+                if st.session_state.data is not None and st.session_state.dictionary:
+                    with st.spinner("🏁 Toad is racing through your data at super speed..."):
+                        try:
+                            st.session_state.results = classifier.classify_text(
+                                st.session_state.data, 
+                                st.session_state.dictionary, 
+                                text_column, 
+                                ground_truth_column
+                            )
+                            
+                            if ground_truth_column and len(st.session_state.results) > 0:
+                                st.session_state.metrics = classifier.calculate_metrics(st.session_state.results)
+                                st.session_state.keyword_analysis = classifier.analyze_keywords(
+                                    st.session_state.data, 
+                                    st.session_state.results, 
+                                    st.session_state.dictionary, 
+                                    text_column, 
+                                    ground_truth_column
+                                )
+                            
+                            st.success("🏁 Wahoo! Classification complete! Toad finished the race!")
+                            st.balloons()
+                            
+                        except Exception as e:
+                            st.error(f"🚫 Mamma mia! Toad hit a banana peel! Error: {str(e)}")
+                            st.info("💡 Try checking your data format or keyword list!")
+                else:
+                    st.error("🚫 Mamma mia! Please load data and set dictionary first!")
+        
+        else:  # Researcher Mode
+            if st.button("🔬 START RESEARCHER MODE!", type="primary", help="Begin creating ground truth labels!"):
+                if st.session_state.data is not None and st.session_state.dictionary:
+                    with st.spinner("🔬 Toad is analyzing data for labeling..."):
+                        try:
+                            # Run classification first to get predictions
+                            st.session_state.results = classifier.classify_text(
+                                st.session_state.data, 
+                                st.session_state.dictionary, 
+                                text_column, 
+                                None  # No ground truth in researcher mode
+                            )
+                            
+                            # Initialize labeling session
+                            if 'labeling_index' not in st.session_state:
+                                st.session_state.labeling_index = 0
+                            if 'researcher_labels' not in st.session_state:
+                                st.session_state.researcher_labels = {}
+                            
+                            st.success("🔬 Researcher mode activated! Ready to create labels!")
+                            
+                        except Exception as e:
+                            st.error(f"🚫 Mamma mia! Error in researcher mode: {str(e)}")
+                else:
+                    st.error("🚫 Mamma mia! Please load data and set dictionary first!")
     
     # Main content area
     if st.session_state.data is None:
@@ -525,8 +564,177 @@ def main():
             keywords_html = " ".join([f'<span class="keyword-mushroom">{kw}</span>' for kw in st.session_state.dictionary])
             st.markdown(keywords_html, unsafe_allow_html=True)
     
-    # Results display
-    if st.session_state.results is not None:
+    # Researcher Mode Interface
+    if ('results' in st.session_state and st.session_state.results is not None and 
+        'labeling_index' in st.session_state):
+        
+        st.markdown("## 🔬 Toad's Researcher Mode - Create Ground Truth Labels")
+        
+        # Progress tracking
+        total_items = len(st.session_state.data)
+        labeled_count = len(st.session_state.researcher_labels)
+        progress = labeled_count / total_items if total_items > 0 else 0
+        
+        st.progress(progress, text=f"🍄 Progress: {labeled_count}/{total_items} items labeled ({progress:.1%})")
+        
+        # Labeling interface
+        if st.session_state.labeling_index < total_items:
+            current_idx = st.session_state.labeling_index
+            current_row = st.session_state.data.iloc[current_idx]
+            current_result = st.session_state.results.iloc[current_idx]
+            
+            st.markdown(f"### 📝 Item {current_idx + 1} of {total_items}")
+            
+            # Display the text to label
+            st.markdown("#### 🔍 Text to Label:")
+            st.markdown(f"""
+            <div class="mushroom-card">
+                <p style="color: white; font-size: 16px; line-height: 1.5;">
+                    {current_row[st.session_state.text_column]}
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show Toad's prediction
+            prediction = current_result['binary_prediction']
+            confidence = current_result['continuous_score']
+            matched_keywords = current_result['matched_keywords']
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("#### 🤖 Toad's Prediction:")
+                pred_color = "#FF6B6B" if prediction == 1 else "#74B9FF"
+                pred_text = "Positive (1)" if prediction == 1 else "Negative (0)"
+                st.markdown(f"""
+                <div style="background: {pred_color}; color: white; padding: 10px; border-radius: 10px; text-align: center;">
+                    <strong>{pred_text}</strong><br>
+                    Confidence: {confidence:.3f}
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("#### 🍄 Matched Keywords:")
+                if matched_keywords:
+                    keywords_html = " ".join([f'<span class="keyword-mushroom" style="font-size: 12px;">{kw}</span>' for kw in matched_keywords])
+                    st.markdown(keywords_html, unsafe_allow_html=True)
+                else:
+                    st.markdown("🚫 No keywords matched")
+            
+            with col3:
+                st.markdown("#### 🏷️ Your Label:")
+                user_label = st.radio(
+                    "What's the correct label?",
+                    options=[1, 0],
+                    format_func=lambda x: "Positive (1)" if x == 1 else "Negative (0)",
+                    key=f"label_{current_idx}",
+                    help="Choose the correct label for this text"
+                )
+            
+            # Labeling controls
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                if st.button("✅ Save & Next", type="primary"):
+                    st.session_state.researcher_labels[current_idx] = user_label
+                    st.session_state.labeling_index += 1
+                    st.rerun()
+            
+            with col2:
+                if st.button("⏭️ Skip"):
+                    st.session_state.labeling_index += 1
+                    st.rerun()
+            
+            with col3:
+                if current_idx > 0:
+                    if st.button("⬅️ Previous"):
+                        st.session_state.labeling_index -= 1
+                        st.rerun()
+            
+            with col4:
+                if st.button("🔄 Reset Labels"):
+                    st.session_state.researcher_labels = {}
+                    st.session_state.labeling_index = 0
+                    st.rerun()
+            
+            # Quick stats
+            if labeled_count > 0:
+                positive_labels = sum(1 for label in st.session_state.researcher_labels.values() if label == 1)
+                negative_labels = labeled_count - positive_labels
+                
+                st.markdown("#### 📊 Current Label Distribution:")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("🔴 Positive Labels", positive_labels)
+                with col2:
+                    st.metric("🔵 Negative Labels", negative_labels)
+        
+        else:
+            # Labeling complete
+            st.markdown("### 🎉 Labeling Complete! Wahoo!")
+            st.success("🏁 Toad has finished creating ground truth labels!")
+            
+            # Show final stats
+            positive_labels = sum(1 for label in st.session_state.researcher_labels.values() if label == 1)
+            negative_labels = len(st.session_state.researcher_labels) - positive_labels
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("🔴 Total Positive Labels", positive_labels)
+            with col2:
+                st.metric("🔵 Total Negative Labels", negative_labels)
+            
+            # Export labeled data
+            if st.button("📥 Download Labeled Dataset", type="primary"):
+                # Create new dataframe with labels
+                labeled_df = st.session_state.data.copy()
+                labeled_df['Ground_Truth'] = labeled_df.index.map(st.session_state.researcher_labels)
+                
+                csv = labeled_df.to_csv(index=False)
+                st.download_button(
+                    label="🍄 Download CSV with Labels",
+                    data=csv,
+                    file_name="toad_labeled_dataset.csv",
+                    mime="text/csv",
+                    help="Download your dataset with the new ground truth labels!"
+                )
+            
+            # Option to run full analysis
+            if st.button("🏁 Run Full Analysis with New Labels"):
+                with st.spinner("🔬 Running analysis with researcher labels..."):
+                    # Create ground truth column from labels
+                    labeled_data = st.session_state.data.copy()
+                    labeled_data['Researcher_Ground_Truth'] = labeled_data.index.map(st.session_state.researcher_labels)
+                    
+                    # Re-run classification with ground truth
+                    results_with_gt = classifier.classify_text(
+                        labeled_data, 
+                        st.session_state.dictionary, 
+                        st.session_state.text_column,
+                        'Researcher_Ground_Truth'
+                    )
+                    
+                    # Calculate metrics
+                    metrics_with_gt = classifier.calculate_metrics(results_with_gt)
+                    keyword_analysis_with_gt = classifier.analyze_keywords(
+                        labeled_data,
+                        results_with_gt,
+                        st.session_state.dictionary,
+                        st.session_state.text_column,
+                        'Researcher_Ground_Truth'
+                    )
+                    
+                    # Update session state
+                    st.session_state.results = results_with_gt
+                    st.session_state.metrics = metrics_with_gt
+                    st.session_state.keyword_analysis = keyword_analysis_with_gt
+                    
+                    st.success("🏆 Full analysis complete with researcher labels!")
+                    st.balloons()
+                    st.rerun()
+
+    # Regular results display (when not in researcher mode or after completing labeling)
+    elif st.session_state.results is not None:
         st.markdown("## 🏆 Toad's Super Mushroom Results!")
         
         # Metrics display
