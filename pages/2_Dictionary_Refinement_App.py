@@ -566,9 +566,17 @@ def main():
     
     # Researcher Mode Interface
     if ('results' in st.session_state and st.session_state.results is not None and 
-        'labeling_index' in st.session_state):
+        'labeling_index' in st.session_state and 
+        st.session_state.data is not None and
+        'text_column' in st.session_state and st.session_state.text_column):
         
         st.markdown("## 🔬 Toad's Researcher Mode - Create Ground Truth Labels")
+        
+        # Validate text column exists in data
+        if st.session_state.text_column not in st.session_state.data.columns:
+            st.error(f"🚫 Mamma mia! Text column '{st.session_state.text_column}' not found in data!")
+            st.info("💡 Please select a valid text column in the sidebar first!")
+            return
         
         # Progress tracking
         total_items = len(st.session_state.data)
@@ -587,10 +595,21 @@ def main():
             
             # Display the text to label
             st.markdown("#### 🔍 Text to Label:")
+            
+            # Safely get the text content
+            try:
+                text_content = current_row[st.session_state.text_column]
+                if text_content is None or text_content == "" or str(text_content).lower() == 'nan':
+                    text_content = "[Empty or missing text]"
+                else:
+                    text_content = str(text_content)
+            except (KeyError, IndexError):
+                text_content = "[Error: Could not access text content]"
+            
             st.markdown(f"""
             <div class="mushroom-card">
                 <p style="color: white; font-size: 16px; line-height: 1.5;">
-                    {current_row[st.session_state.text_column]}
+                    {text_content}
                 </p>
             </div>
             """, unsafe_allow_html=True)
