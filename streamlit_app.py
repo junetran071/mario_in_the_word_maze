@@ -1,472 +1,241 @@
-import streamlit as st
+"""
+Instagram Caption Transformation Script - Fixed for Correct Output Format
+Based on original by Dr. Yufan (Frank) Lin
+Modified to output specific columns: ID, Sentence ID, Context, Statement
+"""
+!pip install emoji
+!pip install unidecode
+from unidecode import unidecode
 import pandas as pd
+import nltk
 import re
-import io
-from typing import Dict, List, Optional
+import logging
+import emoji
+import csv
+from typing import List, Dict
+from google.colab import drive
+from nltk.tokenize import sent_tokenize
 
-# Try to import optional dependencies with error handling
-try:
-    import nltk
-    from nltk.tokenize import sent_tokenize
-    NLTK_AVAILABLE = True
-except ImportError:
-    NLTK_AVAILABLE = False
-    st.error("🚫 NLTK is not installed. Please install it using: pip install nltk")
+# Download required NLTK data
+nltk.download('punkt')
 
-try:
-    import emoji
-    EMOJI_AVAILABLE = True
-except ImportError:
-    EMOJI_AVAILABLE = False
-    st.warning("⚠️ Emoji package not available. Emoji removal will be skipped.")
-
-try:
-    from unidecode import unidecode
-    UNIDECODE_AVAILABLE = True
-except ImportError:
-    UNIDECODE_AVAILABLE = False
-    st.warning("⚠️ Unidecode package not available. Unicode normalization will be skipped.")
-
-# Configure Streamlit page
-st.set_page_config(
-    page_title="Princess Peach's Instagram Preprocessor",
-    page_icon="👑",
-    layout="wide"
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
-
-# Princess Peach theme CSS
-st.markdown("""
-<style>
-    /* Main background gradient */
-    .stApp {
-        background: linear-gradient(135deg, #FFE4E6 0%, #FDF2F8 25%, #FCEDF0 50%, #F9E7EC 75%, #FFE4E8 100%);
-    }
-    
-    /* Header styling */
-    .main-header {
-        background: linear-gradient(90deg, #EC4899, #F472B6, #FB7185);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-align: center;
-        font-size: 3rem;
-        font-weight: bold;
-        margin-bottom: 1rem;
-        text-shadow: 2px 2px 4px rgba(236, 72, 153, 0.3);
-    }
-    
-    /* Sidebar styling */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #FDF2F8 0%, #FCE7F3 100%);
-        border-right: 2px solid #F9A8D4;
-    }
-    
-    /* Button styling */
-    .stButton > button {
-        background: linear-gradient(45deg, #EC4899, #F472B6);
-        color: white;
-        border: none;
-        border-radius: 25px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-        box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
-        transition: all 0.3s ease;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
-    }
-    
-    /* Metric styling */
-    .css-1xarl3l {
-        background: linear-gradient(135deg, #FDF2F8, #FCE7F3);
-        border-radius: 15px;
-        border: 2px solid #F9A8D4;
-        padding: 1rem;
-    }
-    
-    /* File uploader styling */
-    .css-1cpxqw2 {
-        border: 2px dashed #EC4899;
-        border-radius: 15px;
-        background: linear-gradient(135deg, #FFFBFC, #FDF2F8);
-    }
-    
-    /* Success message styling */
-    .stSuccess {
-        background: linear-gradient(90deg, #10B981, #34D399);
-        border-radius: 10px;
-    }
-    
-    /* Crown decoration */
-    .crown-decoration {
-        text-align: center;
-        font-size: 2rem;
-        margin: 1rem 0;
-    }
-    
-    /* Princess welcome message */
-    .princess-welcome {
-        background: linear-gradient(135deg, #FDF2F8, #FCE7F3, #FFEEF0);
-        border: 2px solid #F9A8D4;
-        border-radius: 20px;
-        padding: 2rem;
-        text-align: center;
-        margin: 1rem 0;
-        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.2);
-    }
-    
-    .princess-welcome h2 {
-        color: #BE185D;
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    .princess-welcome p {
-        color: #831843;
-        font-size: 1.2rem;
-        font-style: italic;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Download NLTK data on first run
-@st.cache_resource
-def download_nltk_data():
-    """Download required NLTK data"""
-    if not NLTK_AVAILABLE:
-        return False
-    
-    try:
-        import nltk
-        nltk.download('punkt_tab', quiet=True)
-        return True
-    except:
-        try:
-            nltk.download('punkt', quiet=True)
-            return True
-        except:
-            st.error("Failed to download NLTK data")
-            return False
+logger = logging.getLogger(__name__)
 
 class TextPreprocessor:
-    """Configurable text preprocessing for Instagram captions"""
-    
-    def __init__(self, config: Dict = None):
-        """Initialize with custom configuration"""
-        # Default configuration
-        self.default_config = {
-            'remove_emojis': True,
-            'remove_urls': True,
-            'remove_emails': True,
-            'remove_hashtags': True,
-            'remove_mentions': True,
-            'normalize_unicode': True,
-            'add_period_if_missing': True,
-            'padding_token': '[PAD]'
-        }
-        
-        # Update with user config
-        self.config = self.default_config.copy()
-        if config:
-            self.config.update(config)
-        
-        # Compile regex patterns
-        self.url_pattern = re.compile(r'http[s]?://\S+')
-        self.email_pattern = re.compile(r'\S+@\S+')
-        self.hashtag_pattern = re.compile(r'#\w+')
-        self.mention_pattern = re.compile(r'@\w+')
-    
-    def clean_text(self, text: str) -> str:
-        """Clean Instagram caption text based on configuration"""
-        if not isinstance(text, str) or not text.strip():
-            return self.config['padding_token']
-        
-        # Remove emojis
-        if self.config['remove_emojis'] and EMOJI_AVAILABLE:
-            text = emoji.replace_emoji(text, replace='')
-        elif self.config['remove_emojis'] and not EMOJI_AVAILABLE:
-            # Fallback: simple emoji removal using regex
-            emoji_pattern = re.compile("["
-                u"\U0001F600-\U0001F64F"  # emoticons
-                u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                "]+", flags=re.UNICODE)
-            text = emoji_pattern.sub(r'', text)
-        
-        # Normalize unicode characters
-        if self.config['normalize_unicode'] and UNIDECODE_AVAILABLE:
-            text = unidecode(text)
-        
-        # Remove URLs
-        if self.config['remove_urls']:
-            text = self.url_pattern.sub('', text)
-        
-        # Remove emails
-        if self.config['remove_emails']:
-            text = self.email_pattern.sub('', text)
-        
-        # Remove hashtags
-        if self.config['remove_hashtags']:
-            text = self.hashtag_pattern.sub('', text)
-        
-        # Remove mentions
-        if self.config['remove_mentions']:
-            text = self.mention_pattern.sub('', text)
-        
-        # Clean whitespace
-        text = text.replace('\n', ' ').strip()
-        text = ' '.join(text.split())
-        
-        return text if text else self.config['padding_token']
-    
-    def split_sentences(self, text: str) -> List[str]:
-        """Split text into sentences"""
-        if text == self.config['padding_token'] or not text:
-            return []
-        
-        # Add period if missing
-        if self.config['add_period_if_missing'] and not text[-1] in '.!?':
-            text += '.'
-        
-        if NLTK_AVAILABLE:
-            from nltk.tokenize import sent_tokenize
-            sentences = sent_tokenize(text)
-        else:
-            # Fallback: simple sentence splitting
-            sentences = re.split(r'[.!?]+', text)
-            sentences = [s.strip() for s in sentences if s.strip()]
-        
-        return [s.strip() for s in sentences if s.strip()]
+    """Class to handle text preprocessing operations for Instagram captions"""
 
-def process_dataframe(df: pd.DataFrame, config: Dict, required_columns: Dict) -> pd.DataFrame:
-    """Process the uploaded dataframe"""
-    preprocessor = TextPreprocessor(config)
-    results = []
-    
-    # Create progress bar
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    
-    for idx, row in df.iterrows():
-        # Update progress
-        progress = (idx + 1) / len(df)
-        progress_bar.progress(progress)
-        status_text.text(f'Processing row {idx + 1} of {len(df)}...')
-        
-        # Skip if no caption
-        caption_col = required_columns['caption']
-        if pd.isna(row[caption_col]):
-            continue
-        
-        # Clean caption
-        cleaned_caption = preprocessor.clean_text(row[caption_col])
-        
-        # Split into sentences
-        sentences = preprocessor.split_sentences(cleaned_caption)
-        
-        # Create records for each sentence
-        for turn, sentence in enumerate(sentences, 1):
-            result_row = {
-                'turn': turn,
-                'caption': row[caption_col],  # Original caption (context)
-                'transcript': sentence,       # Cleaned sentence (statement)
-            }
-            
-            # Add other columns from original data
-            for col_name, original_col in required_columns.items():
-                if col_name != 'caption':
-                    result_row[col_name] = row[original_col]
-            
-            results.append(result_row)
-    
-    # Clear progress indicators
-    progress_bar.empty()
-    status_text.empty()
-    
-    return pd.DataFrame(results)
+    def __init__(self):
+        self.url_pattern = re.compile(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+        self.email_pattern = re.compile(r'\S+@\S+')
+        self.hashtag_pattern = re.compile(r'#[\w\d]+')
+        self.mention_pattern = re.compile(r'@[\w\d]+')
+
+    def remove_emoji(self, text: str) -> str:
+        """Remove emoji characters from text"""
+        return emoji.replace_emoji(text, replace='')
+
+    def clean_text(self, text: str) -> str:
+        """Clean and normalize Instagram caption text"""
+        if not isinstance(text, str):
+            return "[PAD]"
+        try:
+            # Remove emojis first
+            text = self.remove_emoji(text)
+
+            # Normalize text with unidecode
+            text = unidecode(text)
+
+            # Remove URLs, email addresses, mentions and hashtags
+            text = self.url_pattern.sub('', text)
+            text = self.email_pattern.sub('', text)
+            text = self.hashtag_pattern.sub('', text)
+            text = self.mention_pattern.sub('', text)
+
+            # Replace newlines with spaces
+            text = text.replace('\n', ' ')
+
+            # Remove extra spaces and strip
+            text = ' '.join(text.split())
+
+            return text if text.strip() else "[PAD]"
+        except Exception as e:
+            logger.error(f"Error cleaning text: {str(e)}")
+            return "[PAD]"
+
+    def split_sentences(self, caption: str) -> List[str]:
+        """
+        Split caption text into sentences using NLTK
+
+        Args:
+            caption (str): Cleaned caption text
+
+        Returns:
+            List[str]: List of sentences
+        """
+        try:
+            # Handle Instagram captions that might not end with proper punctuation
+            if caption and not caption[-1] in '.!?':
+                caption = caption + '.'
+
+            sentences = sent_tokenize(caption)
+            # Filter out empty sentences
+            return [sent.strip() for sent in sentences if sent.strip()]
+        except Exception as e:
+            logger.error(f"Error splitting sentences: {str(e)}")
+            return []
+
+    def transform_caption_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Transform Instagram caption dataframe into sentence-level data with correct output format"""
+        transformed_rows = []
+
+        for _, row in df.iterrows():
+            # Skip if caption is missing
+            if pd.isna(row['caption']):
+                continue
+
+            # Get the post ID (try different possible column names)
+            post_id = ''
+            if 'shortcode' in row and not pd.isna(row['shortcode']):
+                post_id = str(row['shortcode'])
+            elif 'post_id' in row and not pd.isna(row['post_id']):
+                post_id = str(row['post_id'])
+            elif 'id' in row and not pd.isna(row['id']):
+                post_id = str(row['id'])
+            else:
+                # Use row index as fallback
+                post_id = f"post_{len(transformed_rows)}"
+
+            sentences = self.split_sentences(row['cleaned_caption'])
+            for sentence_id, sentence in enumerate(sentences, 1):
+                transformed_row = {
+                    'ID': post_id,                    # Post identifier
+                    'Sentence ID': sentence_id,       # Sentence number within post
+                    'Context': row['caption'],        # Original caption as context
+                    'Statement': sentence             # Cleaned sentence
+                }
+                transformed_rows.append(transformed_row)
+
+        return pd.DataFrame(transformed_rows)
+
+def verify_csv_reading(file_path: str) -> pd.DataFrame:
+    """
+    Verify that CSV rows are being read correctly
+
+    Args:
+        file_path (str): Path to the CSV file
+
+    Returns:
+        pd.DataFrame: DataFrame with the CSV data
+    """
+    try:
+        # Try different encodings if the default doesn't work
+        encodings = ['utf-8', 'latin1', 'iso-8859-1']
+        df = None
+
+        for encoding in encodings:
+            try:
+                df = pd.read_csv(file_path, encoding=encoding)
+                logger.info(f"Successfully read CSV with {encoding} encoding")
+                break
+            except UnicodeDecodeError:
+                logger.warning(f"Failed to read CSV with {encoding} encoding, trying next...")
+
+        if df is None:
+            raise ValueError("Could not read CSV with any of the attempted encodings")
+
+        # Verify that expected columns are present
+        expected_columns = ['caption']
+        missing_columns = [col for col in expected_columns if col not in df.columns]
+
+        if missing_columns:
+            logger.error(f"Missing required columns: {missing_columns}")
+            raise ValueError(f"CSV file must contain these columns: {expected_columns}")
+
+        # Check for NaN values in critical columns
+        critical_columns = ['caption']
+        nan_counts = {col: df[col].isna().sum() for col in critical_columns if col in df.columns}
+
+        if any(nan_counts.values()):
+            logger.warning(f"NaN values found in critical columns: {nan_counts}")
+
+        return df
+
+    except Exception as e:
+        logger.error(f"Error verifying CSV: {str(e)}")
+        raise
 
 def main():
-    """Main Streamlit app"""
-    
-    # Check for missing dependencies
-    missing_deps = []
-    if not NLTK_AVAILABLE:
-        missing_deps.append("nltk")
-    if not EMOJI_AVAILABLE:
-        missing_deps.append("emoji")
-    if not UNIDECODE_AVAILABLE:
-        missing_deps.append("unidecode")
-    
-    # Show installation instructions if dependencies are missing
-    if missing_deps:
-        st.error(f"🚫 Missing required packages: {', '.join(missing_deps)}")
-        st.code(f"pip install {' '.join(missing_deps)}")
-        st.markdown("**Or create a requirements.txt file with:**")
-        st.code("""streamlit
-pandas
-nltk
-emoji
-unidecode""")
-        st.stop()
-    
-    # Download NLTK data
-    if not download_nltk_data():
-        st.error("Failed to initialize NLTK. Please check your internet connection.")
-        st.stop()
-    
-    # Princess Peach welcome section
-    st.markdown("""
-    <div class="princess-welcome">
-        <div class="crown-decoration">👑✨👑</div>
-        <h2>Welcome to Princess Peach's Instagram</h2>
-        <p>"Transform your royal captions into elegant sentence-level data with the power of the Mushroom Kingdom!"</p>
-        <div class="crown-decoration">🌸💖🌸</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown('<h1 class="main-header">👑 Royal Caption Preprocessor 👑</h1>', unsafe_allow_html=True)
-    
-    # Sidebar for configuration
-    st.sidebar.markdown("### 👑 Royal Preprocessing Settings")
-    st.sidebar.markdown("*Customize your text transformation magic*")
-    
-    # Preprocessing options with princess-themed descriptions
-    config = {}
-    config['remove_emojis'] = st.sidebar.checkbox("✨ Remove Emojis", value=True, help="Remove emoji characters from text")
-    config['remove_urls'] = st.sidebar.checkbox("🔗 Remove URLs", value=True, help="Remove web links")
-    config['remove_emails'] = st.sidebar.checkbox("📧 Remove Emails", value=True, help="Remove email addresses")
-    config['remove_hashtags'] = st.sidebar.checkbox("# Remove Hashtags", value=True, help="Remove hashtag symbols")
-    config['remove_mentions'] = st.sidebar.checkbox("@ Remove Mentions", value=True, help="Remove @ mentions")
-    config['normalize_unicode'] = st.sidebar.checkbox("🌟 Normalize Unicode", value=True, help="Convert special characters")
-    config['add_period_if_missing'] = st.sidebar.checkbox("📝 Add Period if Missing", value=True, help="Add periods to complete sentences")
-    config['padding_token'] = st.sidebar.text_input("💫 Padding Token", value="[PAD]", help="Token for empty content")
-    
-    # Main content area
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("## 📜 Upload Your Royal Dataset")
-        uploaded_file = st.file_uploader(
-            "Choose a CSV file fit for a princess",
-            type="csv",
-            help="Upload your Instagram posts dataset in CSV format"
+    """Main function to execute the transformation pipeline"""
+    try:
+        # Mount Google Drive
+        drive.mount('/content/drive')
+        
+        # Update these paths to match your file structure
+        input_filename = "ig_posts_raw.csv"  # Change this to your actual input filename
+        output_filename = "ig_posts_pre-processing.csv"  # This matches your required output name
+        
+        # You'll need to update this path to where your files are located
+        base_path = "/content/drive/My Drive"  # Update this path as needed
+        input_path = f"{base_path}/{input_filename}"
+        output_path = f"{base_path}/{output_filename}"
+
+        logger.info("Verifying and reading input data...")
+        df = verify_csv_reading(input_path)
+
+        # Print sample to verify correct reading
+        logger.info(f"Read {len(df)} rows from CSV")
+        logger.info(f"Columns found: {list(df.columns)}")
+        if len(df) > 0:
+            logger.info(f"Sample caption: {df['caption'].iloc[0][:100]}...")
+
+        # Count captions with potential special characters
+        emoji_pattern = re.compile(r'[^\w\s.,!?\'"()]')
+        emojis_count = sum(df['caption'].apply(
+            lambda x: bool(emoji_pattern.search(str(x))) if not pd.isna(x) else False
+        ))
+        logger.info(f"Number of captions with special characters: {emojis_count}")
+
+        logger.info("Transforming caption data...")
+        preprocessor = TextPreprocessor()
+        df['cleaned_caption'] = df['caption'].apply(lambda x: preprocessor.clean_text(x))
+
+        transformed_df = preprocessor.transform_caption_data(df)
+
+        logger.info(f"Created {len(transformed_df)} sentence-level records from {len(df)} captions")
+
+        # Verify output columns match expected format
+        expected_output_columns = ['ID', 'Sentence ID', 'Context', 'Statement']
+        actual_columns = list(transformed_df.columns)
+        
+        if actual_columns != expected_output_columns:
+            logger.error(f"Output columns mismatch. Expected: {expected_output_columns}, Got: {actual_columns}")
+        else:
+            logger.info("Output format verified - columns match expected format")
+
+        logger.info("Saving transformed data...")
+        # Save with proper formatting
+        transformed_df.to_csv(
+            output_path,
+            index=False,
+            quoting=csv.QUOTE_NONNUMERIC,  # Quote all non-numeric fields
+            quotechar='"',
+            encoding='utf-8'
         )
         
-        if uploaded_file is not None:
-            try:
-                # Read the uploaded file
-                df = pd.read_csv(uploaded_file)
-                st.success(f"✨ Successfully loaded {len(df)} royal posts and {len(df.columns)} data columns! ✨")
-                
-                # Show data preview
-                st.markdown("## 👀 Royal Data Preview")
-                st.dataframe(df.head(), use_container_width=True)
-                
-                # Column mapping
-                st.markdown("## 🏰 Column Mapping")
-                st.markdown("*Map your dataset columns to the royal requirements:*")
-                
-                available_columns = df.columns.tolist()
-                
-                required_columns = {}
-                required_columns['shortcode'] = st.selectbox(
-                    "👑 Royal Post ID Column", 
-                    available_columns,
-                    help="Unique identifier for each royal post"
-                )
-                required_columns['caption'] = st.selectbox(
-                    "💬 Caption Column", 
-                    available_columns,
-                    help="Column containing the royal Instagram captions"
-                )
-                required_columns['post_url'] = st.selectbox(
-                    "🔗 Post URL Column (Optional)", 
-                    ['None'] + available_columns,
-                    help="Column containing post URLs (optional)"
-                )
-                
-                # Process button
-                if st.button("🚀 Begin Royal Processing", type="primary"):
-                    with st.spinner("Princess Peach is working her magic... ✨"):
-                        # Filter out 'None' selections
-                        filtered_columns = {k: v for k, v in required_columns.items() if v != 'None'}
-                        
-                        # Process the data
-                        result_df = process_dataframe(df, config, filtered_columns)
-                        
-                        st.success(f"🎉 Royal success! Created {len(result_df)} elegant sentence records from {len(df)} posts! 👑")
-                        
-                        # Show results preview
-                        st.markdown("## 📋 Your Royal Results")
-                        st.dataframe(result_df.head(10), use_container_width=True)
-                        
-                        # Download button
-                        csv_buffer = io.StringIO()
-                        result_df.to_csv(csv_buffer, index=False)
-                        csv_data = csv_buffer.getvalue()
-                        
-                        st.download_button(
-                            label="💾 Download Your Royal Data",
-                            data=csv_data,
-                            file_name="princess_peach_ig_posts_preprocessed.csv",
-                            mime="text/csv",
-                            type="primary"
-                        )
-                        
-                        # Show statistics
-                        st.markdown("## 📊 Royal Processing Statistics")
-                        col_stat1, col_stat2, col_stat3 = st.columns(3)
-                        
-                        with col_stat1:
-                            st.metric("👑 Original Posts", len(df))
-                        
-                        with col_stat2:
-                            st.metric("✨ Sentence Records", len(result_df))
-                        
-                        with col_stat3:
-                            avg_sentences = len(result_df) / len(df) if len(df) > 0 else 0
-                            st.metric("💫 Avg Sentences/Post", f"{avg_sentences:.2f}")
-                        
-            except Exception as e:
-                st.error(f"👸 Oops! Princess Peach encountered an error: {str(e)}")
-                st.info("💡 Please make sure your CSV file is properly formatted for the royal court!")
-    
-    with col2:
-        st.markdown("## 📖 Royal Instructions")
-        st.markdown("""
-        ### 👑 How to use Princess Peach's Processor:
+        # Display sample of the output
+        logger.info("Sample of transformed data:")
+        print(transformed_df.head())
         
-        1. **📜 Upload CSV**: Choose your royal Instagram posts dataset
-        
-        2. **⚙️ Configure**: Adjust magical preprocessing options in the sidebar
-        
-        3. **🗺️ Map Columns**: Select which columns contain your precious data
-        
-        4. **✨ Process**: Click the royal processing button to transform your data
-        
-        5. **💾 Download**: Save your elegantly processed results
-        
-        ### 📋 Expected Royal Input Format:
-        Your CSV should contain at least:
-        - **💬 Caption column**: Instagram post captions
-        - **👑 ID column**: Unique post identifier
-        - **🔗 URL column**: Post URLs (optional)
-        
-        ### 📊 Royal Output Format:
-        - **turn**: Sentence number within each post
-        - **caption**: Original royal caption text
-        - **transcript**: Elegantly cleaned sentence
-        - **Other columns**: Preserved from your input
-        
-        ### 🌸 Princess Peach's Tips:
-        *"Remember, darling! Clean data is like a well-organized castle - everything has its perfect place!"* 👸✨
-        """)
-        
-        st.markdown("## ⚙️ Current Royal Settings")
-        st.json(config)
+        logger.info(f"Transformation complete! Output saved to: {output_path}")
+
+    except Exception as e:
+        logger.error(f"Error in main execution: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     main()
