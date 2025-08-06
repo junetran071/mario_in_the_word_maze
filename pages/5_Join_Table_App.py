@@ -171,7 +171,7 @@ def validate_file(uploaded_file):
         return False, "No file uploaded", None
     
     # Check file size (10 MB limit)
-    MAX_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
+    MAX_SIZE = 100 * 1024 * 1024  # 100 MB in bytes
     if uploaded_file.size > MAX_SIZE:
         return False, f"File size exceeds 10 MB limit: {uploaded_file.size / 1024 / 1024:.2f} MB", None
     
