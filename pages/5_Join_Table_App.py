@@ -242,13 +242,13 @@ def main():
     st.markdown("<div class='step-header'>", unsafe_allow_html=True)
     st.markdown("<span class='step-number'>🕹️</span> Upload Your CSV Files", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
-    st.write("Let's start by uploading your CSV files! Each file should be 10 MB or smaller.")
+    st.write("Let's start by uploading your CSV files! Each file should be 100 MB or smaller.")
     
     uploaded_files = st.file_uploader(
         "Choose CSV files",
         type="csv",
         accept_multiple_files=True,
-        help="Upload 2 or more CSV files (max 10 MB each)"
+        help="Upload 2 or more CSV files (max 100 MB each)"
     )
     
     if len(uploaded_files) < 2:
