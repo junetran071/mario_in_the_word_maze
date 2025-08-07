@@ -721,36 +721,271 @@ def main():
             # Option to run full analysis
             if st.button("🏁 Run Full Analysis with New Labels"):
                 with st.spinner("🔬 Running analysis with researcher labels..."):
-                    # Create ground truth column from labels
-                    labeled_data = st.session_state.data.copy()
-                    labeled_data['Researcher_Ground_Truth'] = labeled_data.index.map(st.session_state.researcher_labels)
-                    
-                    # Re-run classification with ground truth
-                    results_with_gt = classifier.classify_text(
-                        labeled_data, 
-                        st.session_state.dictionary, 
-                        st.session_state.text_column,
-                        'Researcher_Ground_Truth'
+                    try:
+                        # Create ground truth column from labels
+                        labeled_data = st.session_state.data.copy()
+                        labeled_data['Researcher_Ground_Truth'] = labeled_data.index.map(st.session_state.researcher_labels)
+                        
+                        # Re-run classification with ground truth
+                        results_with_gt = classifier.classify_text(
+                            labeled_data, 
+                            st.session_state.dictionary, 
+                            st.session_state.text_column,
+                            'Researcher_Ground_Truth'
+                        )
+                        
+                        # Calculate metrics
+                        metrics_with_gt = classifier.calculate_metrics(results_with_gt)
+                        keyword_analysis_with_gt = classifier.analyze_keywords(
+                            labeled_data,
+                            results_with_gt,
+                            st.session_state.dictionary,
+                            st.session_state.text_column,
+                            'Researcher_Ground_Truth'
+                        )
+                        
+                        # Update session state
+                        st.session_state.results = results_with_gt
+                        st.session_state.metrics = metrics_with_gt
+                        st.session_state.keyword_analysis = keyword_analysis_with_gt
+                        
+                        # Clear researcher mode to show results
+                        if 'labeling_index' in st.session_state:
+                            del st.session_state.labeling_index
+                        
+                        st.success("🏆 Full analysis complete with researcher labels!")
+                        st.balloons()
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"🚫 Error running analysis: {str(e)}")
+
+    # Check if we should show metrics from researcher mode
+    elif (st.session_state.results is not None and 
+          st.session_state.metrics is not None and 
+          'researcher_labels' in st.session_state and 
+          len(st.session_state.researcher_labels) > 0):
+        
+        # Show results from researcher mode analysis
+        st.markdown("## 🏆 Toad's Researcher Mode Results!")
+        st.info("🔬 These results are based on your manually created ground truth labels!")
+        
+        # Display all the metrics that were missing
+        if st.session_state.metrics:
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.markdown('<div class="mushroom-card">', unsafe_allow_html=True)
+                st.metric("🎯 Accuracy", f"{st.session_state.metrics['accuracy']:.1%}", help="Overall correctness - Yahoo!")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown('<div class="mushroom-card">', unsafe_allow_html=True)
+                st.metric("🔴 Precision", f"{st.session_state.metrics['precision']:.1%}", help="Mushroom accuracy!")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown('<div class="mushroom-card">', unsafe_allow_html=True)
+                st.metric("⚡ Recall", f"{st.session_state.metrics['recall']:.1%}", help="Speed boost power!")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            with col4:
+                st.markdown('<div class="mushroom-card">', unsafe_allow_html=True)
+                st.metric("🏁 F1 Score", f"{st.session_state.metrics['f1_score']:.1%}", help="Overall racing performance!")
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Advanced metrics
+            st.markdown("### 🍄 Toad's Advanced Mushroom Metrics")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("📏 MAE", f"{st.session_state.metrics['mae']:.4f}", help="Mean Absolute Error")
+            with col2:
+                st.metric("📐 RMSE", f"{st.session_state.metrics['rmse']:.4f}", help="Root Mean Square Error")
+            with col3:
+                st.metric("⭐ R²", f"{st.session_state.metrics['r2_score']:.4f}", help="R-Squared Score")
+            with col4:
+                st.metric("🌟 Correlation", f"{st.session_state.metrics['correlation']:.4f}", help="Correlation Coefficient")
+        
+        # Show all the other analysis sections
+        st.markdown("### 📊 Toad's Racing Visualizations")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Score distribution with Toad colors
+            fig = px.histogram(
+                st.session_state.results, 
+                x='continuous_score',
+                title='🔴 Continuous Score Distribution',
+                color_discrete_sequence=['#FF6B6B']
+            )
+            fig.update_layout(
+                plot_bgcolor='rgba(255,255,255,0.8)',
+                paper_bgcolor='rgba(255,255,255,0.8)',
+                font_color='#D63031'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Binary predictions pie chart
+            binary_counts = st.session_state.results['binary_prediction'].value_counts()
+            
+            # Check if we have data for the pie chart
+            if len(binary_counts) > 0 and binary_counts.sum() > 0:
+                fig = px.pie(
+                    values=binary_counts.values,
+                    names=['Negative (0)', 'Positive (1)'],
+                    title='🏁 Binary Classification Results',
+                    color_discrete_sequence=['#74B9FF', '#FF6B6B']
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                # Show alternative when no data
+                st.markdown("""
+                <div class="mushroom-card">
+                    <h4 style="color: white; text-align: center;">🏁 Binary Classification Results</h4>
+                    <p style="color: white; text-align: center;">🚫 Mamma mia! No data to display yet.<br>
+                    Run classification first!</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Confusion matrix
+        if st.session_state.metrics:
+            st.markdown("### 🎯 Mushroom Kingdom Confusion Matrix")
+            
+            cm_values = [
+                [st.session_state.metrics['tn'], st.session_state.metrics['fp']],
+                [st.session_state.metrics['fn'], st.session_state.metrics['tp']]
+            ]
+            
+            # Check if confusion matrix has valid data
+            if any(any(row) for row in cm_values):
+                fig = px.imshow(
+                    cm_values,
+                    text_auto=True,
+                    color_continuous_scale='Reds',
+                    title='Confusion Matrix'
+                )
+                fig.update_xaxes(ticktext=['Predicted 0', 'Predicted 1'], tickvals=[0, 1])
+                fig.update_yaxes(ticktext=['Actual 0', 'Actual 1'], tickvals=[0, 1])
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("🍄 No confusion matrix data available - need ground truth column for analysis!")
+        
+        # Show all keyword analysis
+        if st.session_state.keyword_analysis is not None and len(st.session_state.keyword_analysis) > 0:
+            st.markdown("### 🔍 Toad's Mushroom Keyword Analysis")
+            
+            # Check if we have valid keyword data
+            top_keywords = st.session_state.keyword_analysis.nlargest(10, 'f1_score')
+            if len(top_keywords) > 0 and top_keywords['f1_score'].sum() > 0:
+                # Keyword performance chart
+                fig = px.bar(
+                    top_keywords,
+                    x='f1_score',
+                    y='keyword',
+                    orientation='h',
+                    title='🍄 Top Keywords by F1 Score',
+                    color='f1_score',
+                    color_continuous_scale='Reds'
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("🍄 No keyword performance data available - keywords may not have matched any text!")
+            
+            # Top keywords by metrics
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### ⚡ Top by Recall (Speed Boost!)")
+                top_recall = st.session_state.keyword_analysis.nlargest(5, 'recall')
+                if len(top_recall) > 0:
+                    for _, row in top_recall.iterrows():
+                        if row['recall'] > 0:  # Only show keywords with actual performance
+                            st.write(f"🍄 **{row['keyword']}** - Recall: {row['recall']:.1%}, Precision: {row['precision']:.1%}, F1: {row['f1_score']:.1%}")
+                    if top_recall['recall'].sum() == 0:
+                        st.write("🚫 No keywords found positive examples yet!")
+                else:
+                    st.write("🍄 Run classification first to see keyword performance!")
+            
+            with col2:
+                st.markdown("#### 🔴 Top by Precision (Mushroom Accuracy!)")
+                top_precision = st.session_state.keyword_analysis.nlargest(5, 'precision')
+                if len(top_precision) > 0:
+                    for _, row in top_precision.iterrows():
+                        if row['precision'] > 0:  # Only show keywords with actual performance
+                            st.write(f"🍄 **{row['keyword']}** - Precision: {row['precision']:.1%}, Recall: {row['recall']:.1%}, F1: {row['f1_score']:.1%}")
+                    if top_precision['precision'].sum() == 0:
+                        st.write("🚫 No keywords matched any text yet!")
+                else:
+                    st.write("🍄 Run classification first to see keyword performance!")
+        
+        # Error analysis with researcher labels
+        st.markdown("### 🚫 Toad's Error Analysis")
+        
+        if st.session_state.metrics:
+            error_tab1, error_tab2 = st.tabs(["❌ False Positives (Toad's Oopsies)", "💔 False Negatives (Missed by Toad)"])
+            
+            with error_tab1:
+                fp_results = st.session_state.results[
+                    (st.session_state.results['binary_prediction'] == 1) & 
+                    (st.session_state.results['ground_truth'] == 0)
+                ]
+                
+                if len(fp_results) > 0:
+                    st.markdown(f"**❌ {len(fp_results)} False Positives Found - Toad's Oopsies:**")
+                    for i, (_, row) in enumerate(fp_results.head(10).iterrows()):
+                        with st.expander(f"Oopsie #{i+1}"):
+                            st.write(f"**Text:** {row['text']}")
+                            st.write(f"**🍄 Matched Keywords:** {', '.join(row['matched_keywords'])}")
+                            st.write(f"**Score:** {row['continuous_score']:.3f}")
+                else:
+                    st.success("🏁 Wahoo! No false positives - Perfect mushroom accuracy!")
+            
+            with error_tab2:
+                fn_results = st.session_state.results[
+                    (st.session_state.results['binary_prediction'] == 0) & 
+                    (st.session_state.results['ground_truth'] == 1)
+                ]
+                
+                if len(fn_results) > 0:
+                    st.markdown(f"**💔 {len(fn_results)} False Negatives Found - Toad Missed These:**")
+                    for i, (_, row) in enumerate(fn_results.head(10).iterrows()):
+                        with st.expander(f"Missed #{i+1}"):
+                            st.write(f"**Text:** {row['text']}")
+                            st.write("**🔍 No keywords matched - Need more mushroom power!**")
+                            st.write(f"**Score:** {row['continuous_score']:.3f}")
+                else:
+                    st.success("🍄 Yahoo! No false negatives - Perfect speed boost!")
+        
+        # Export section for researcher results
+        st.markdown("### 📥 Export Toad's Researcher Results")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("📊 Download Racing Results"):
+                csv = st.session_state.results.to_csv(index=False)
+                st.download_button(
+                    label="🏁 Download CSV",
+                    data=csv,
+                    file_name="toad_researcher_results.csv",
+                    mime="text/csv",
+                    help="Download Toad's researcher mode results!"
+                )
+        
+        with col2:
+            if st.session_state.keyword_analysis is not None:
+                if st.button("🔍 Download Keyword Analysis"):
+                    csv = st.session_state.keyword_analysis.to_csv(index=False)
+                    st.download_button(
+                        label="🍄 Download Analysis",
+                        data=csv,
+                        file_name="toad_researcher_keyword_analysis.csv",
+                        mime="text/csv",
+                        help="Download Toad's keyword analysis!"
                     )
-                    
-                    # Calculate metrics
-                    metrics_with_gt = classifier.calculate_metrics(results_with_gt)
-                    keyword_analysis_with_gt = classifier.analyze_keywords(
-                        labeled_data,
-                        results_with_gt,
-                        st.session_state.dictionary,
-                        st.session_state.text_column,
-                        'Researcher_Ground_Truth'
-                    )
-                    
-                    # Update session state
-                    st.session_state.results = results_with_gt
-                    st.session_state.metrics = metrics_with_gt
-                    st.session_state.keyword_analysis = keyword_analysis_with_gt
-                    
-                    st.success("🏆 Full analysis complete with researcher labels!")
-                    st.balloons()
-                    st.rerun()
 
     # Regular results display (when not in researcher mode or after completing labeling)
     elif st.session_state.results is not None:
