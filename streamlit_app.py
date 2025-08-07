@@ -26,7 +26,7 @@ except ImportError:
 
 # Configure Streamlit page
 st.set_page_config(
-    page_title="Princess Peach's Instagram Pre-Processor",
+    page_title="Princess Peach's Instagram Preprocessor",
     page_icon="👑",
     layout="wide"
 )
@@ -86,8 +86,8 @@ def download_nltk_data():
         except:
             return False
 
-class TextPre-Processor:
-    """Configurable text pre-processing for Instagram captions"""
+class TextPreprocessor:
+    """Configurable text preprocessing for Instagram captions"""
     
     def __init__(self, config: Dict = None):
         """Initialize with custom configuration"""
@@ -179,7 +179,7 @@ class TextPre-Processor:
 
 def process_dataframe(df: pd.DataFrame, config: Dict, caption_column: str, id_column: str) -> pd.DataFrame:
     """Process the uploaded dataframe to match the required output format"""
-    pre-processor = TextPreprocessor(config)
+    preprocessor = TextPreprocessor(config)
     results = []
     
     # Create progress bar
@@ -250,16 +250,16 @@ def main():
     st.markdown("""
     <div class="princess-welcome">
         <div style="font-size: 2rem; margin-bottom: 1rem;">👑✨👑</div>
-        <h2>Welcome to Princess Peach's Instagram Pre-Processor</h2>
+        <h2>Welcome to Princess Peach's Instagram Preprocessor</h2>
         <p>"Transform your royal captions into elegant sentence-level data!"</p>
         <div style="font-size: 2rem; margin-top: 1rem;">🌸💖🌸</div>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown('<h1 class="main-header">👑 Royal Caption Pre-Processor 👑</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">👑 Royal Caption Preprocessor 👑</h1>', unsafe_allow_html=True)
     
     # Sidebar for configuration
-    st.sidebar.markdown("### 👑 Royal Pre-Processing Settings")
+    st.sidebar.markdown("### 👑 Royal Preprocessing Settings")
     
     # Preprocessing options
     config = {}
@@ -363,7 +363,7 @@ def main():
         
         1. **📜 Upload CSV**: Choose your Instagram posts dataset
         
-        2. **⚙️ Configure**: Adjust pre-processing options in the sidebar
+        2. **⚙️ Configure**: Adjust preprocessing options in the sidebar
         
         3. **🗺️ Map Columns**: Select caption and ID columns
         
